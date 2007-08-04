@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <string.h>
+#include <stdbool.h>
+#include <ctype.h>
 #include <stdarg.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -43,41 +45,38 @@ enum filetype {
 /*
  * Output a single menu item. The strings passed in are unescaped.
  */
-static void vmenuitem(enum filetype ft, const char *path, const char *parent, const char *server, unsigned short port, const char *namefmt, va_list ap) {
-	assert(parent);
+static void vmenuitem(enum filetype ft, const char *path, const char *server, unsigned short port, const char *namefmt, va_list ap) {
 	assert(path);
 	assert(namefmt);
 
-	/* TODO omit paths with odd characters */
-	/* TODO cleanup paths: strip prepending ./ etc, Empty paths can become '/' */
+	/* TODO omit paths with odd characters? */
 
 	printf("%c", ft);
 
-	/* TODO urlencode name here */
+	/* TODO urlencode name here: vsnprintf to string, and urlencode that string */
 	vprintf(namefmt, ap);
 
 	/* TODO urlencode strings here */
-	printf("\t%s/%s\t%s\t%d\r\n",
-		parent, path, server, port);
+	printf("\t%s\t%s\t%d\r\n",
+		path, server, port);
 }
 
 /*
  * Output a single menu item. The strings passed in are unescaped.
  */
-static void menuitem(enum filetype ft, const char *path, const char *parent, char *server, unsigned short port, const char *namefmt, ...) {
+static void menuitem(enum filetype ft, const char *path, char *server, unsigned short port, const char *namefmt, ...) {
 	va_list ap;
 
-	assert(parent);
 	assert(path);
 	assert(namefmt);
 
 	va_start(ap, namefmt);
-	vmenuitem(ft, path, parent, server, port, namefmt, ap);
+	vmenuitem(ft, path, server, port, namefmt, ap);
 	va_end(ap);
 }
 
 enum filetype findtype(const char *ext) {
-	/* TODO: replace with binary-search table */
+	/* TODO: replace with binary-search table. Or maybe a list of regexps */
 	/* TODO find usual extensions for BinHex (4) and UUE (6) */
 	if(ext == NULL) {
 		/* unknown: binary */
@@ -108,7 +107,8 @@ enum filetype findtype(const char *ext) {
  * Create an error listing and exit.
  */
 static void listerror(const char *msg) {
-	menuitem(ft_error, "fake", "", "(NULL)", 0, "%s: %s", msg, strerror(errno));
+	menuitem(ft_error, "fake", "(NULL)", 0, "%s: %s", msg, strerror(errno));
+	exit(EXIT_FAILURE);
 }
 
 /*
@@ -119,49 +119,77 @@ static void listinfo(const char *fmt, ...) {
 	va_list ap;
 
 	va_start(ap, fmt);
-	vmenuitem(ft_info, "fake", "", "(NULL)", 0, fmt, ap);
+	vmenuitem(ft_info, "fake", "(NULL)", 0, fmt, ap);
 	va_end(ap);
+}
+
+/*
+ * Find if a string is entirely uppercase.
+ */
+static bool isupperstr(const char *s) {
+	while(*s) {
+		if(!isupper((int)*s)) {
+			return false;
+		}
+
+		s++;
+	}
+
+	return true;
 }
 
 /*
  * Create a listing for a single file item.
  */
-static void listfile(const char *path, const char *ext, const char *parent) {
+static void listfile(const char *filename, const char *ext, const char *parent) {
+	char *s;
+	size_t slen;
 	enum filetype ft;
 
-	assert(path);
+	assert(filename);
 	assert(parent);
 
+	slen = strlen(filename) + strlen(parent) + sizeof("/");
+	errno = 0;
+	s = malloc(slen + 1);
+	if(!s) {
+		listerror("malloc");
+	}
+
 	ft = findtype(ext);
+	if(ft == ft_binary && isupperstr(filename)) {
+		/* Entirely uppercase files are usually text */
+		ft = ft_text;
+	}
 
 	/* TODO append directory listing details: filesize, date etc */
-	/* TODO escape out printf format before passing namefmt */
-	menuitem(ft, path, parent, SERVER, PORT, path);
+	snprintf(s, slen, !strcmp(parent, "/") ? "%s%s" : "%s/%s", parent, filename);
+	menuitem(ft, s, SERVER, PORT, "%s - %s", filename, "53Kb" /* TODO */);
+
+	free(s);
 }
 
 /*
  * Create a listing for a single directory item. Note that trailing
  * slashes are not appended, as the display is the client's choice.
  */
-static void listdir(const char *path, const char *parent) {
+static void listdir(const char *dirname, const char *parent) {
 	char *s;
 	size_t slen;
 
-	assert(path);
+	assert(dirname);
 	assert(parent);
 
-	slen = strlen(path) + strlen(parent);
+	slen = strlen(dirname) + strlen(parent) + sizeof("/");
 	errno = 0;
 	s = malloc(slen + 1);
 	if(!s) {
 		listerror("malloc");
-		exit(EXIT_FAILURE);
 	}
 
 	/* TODO append directory details here (number of entries) */
-	snprintf(s, slen, "%s", path);
-	/* TODO escape out printf format before passing namefmt */
-	menuitem(ft_dir, s, parent, SERVER, PORT, s);
+	snprintf(s, slen, !strcmp(parent, "/") ? "%s%s" : "%s/%s", parent, dirname);
+	menuitem(ft_dir, s, SERVER, PORT, "%s", dirname);
 
 	free(s);
 }
@@ -181,18 +209,24 @@ static void dirmenu(const char *path) {
 	od = opendir(path);
 	if(!od) {
 		listerror("opendir");
-		exit(EXIT_FAILURE);
+	}
+
+	/* Simplify the path a little */
+	/* TODO cleanup paths: strip prepending ./ etc, Empty paths can become '/' */
+	if(!strncmp(path, "./", 2)) {
+		path = path + 1;
+	} else if(!strcmp(path, ".")) {
+		path = "/";
 	}
 
 	listinfo("Index of %s", path);
 	listinfo("");
 
 	i = 0;
-	for(; ;) {
+	for(;;) {
 		errno = 0;
 		if(readdir_r(od, &de, &dep)) {
 			listerror("readdir_r");
-			exit(EXIT_FAILURE);
 		}
 
 		if(!dep) {
@@ -251,14 +285,12 @@ static void mapfile(const char *path, size_t len) {
 	/* TODO handle error gracefully */
 	if(fd == -1) {
 		listerror("open");
-		exit(EXIT_SUCCESS);
 	}
 
 	errno = 0;
 	mm = mmap(NULL, len, PROT_READ, MAP_FILE, fd, 0);
 	if(mm == MAP_FAILED) {
 		listerror("mmap");
-		exit(EXIT_FAILURE);
 	}
 
 	fwrite(mm, len, 1, stdout);
@@ -285,7 +317,6 @@ int main(void) {
 	errno = 0;
 	if(stat(selector, &sb) == -1) {
 		listerror("stat");
-		exit(EXIT_SUCCESS);
 	}
 
 	if(S_ISDIR(sb.st_mode)) {
