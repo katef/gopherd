@@ -24,6 +24,8 @@
 #include <dirent.h>
 #include <assert.h>
 
+static void listtexterrorf(const char *fmt, ...);
+
 #define SERVER "localhost"
 #define PORT 70
 
@@ -43,22 +45,56 @@ enum filetype {
 };
 
 /*
+ * Check for presence of illegal characters. Returns false if they exist.
+ * Errors within this function are not reported to the client.
+ */
+bool checkchars(const char *s) {
+	assert(s);
+
+	/*
+	 * If the complement of this set spans to the end of the string
+	 * (that is, s[span] is '\0', then no invalid characters are
+	 * found.
+	 */
+	return !s[strcspn(s, "\t\r\n")];
+}
+
+/*
  * Output a single menu item. The strings passed in are unescaped.
+ * Errors within this function are not reported to the client.
  */
 static void vmenuitem(enum filetype ft, const char *path, const char *server, unsigned short port, const char *namefmt, va_list ap) {
+	char *s;
+
 	assert(path);
+	assert(server);
 	assert(namefmt);
 
 	/* TODO omit paths with odd characters? */
 
-	printf("%c", ft);
+	vasprintf(&s, namefmt, ap);
+	if(!s) {
+		exit(EXIT_FAILURE);
+	}
 
-	/* TODO urlencode name here: vsnprintf to string, and urlencode that string */
-	vprintf(namefmt, ap);
+	if(!checkchars(s)) {
+		listtexterrorf("Illegal character in filename");
+		return;
+	}
+	if(!checkchars(path)) {
+		listtexterrorf("Illegal character in path to file");
+		return;
+	}
+	if(!checkchars(server)) {
+		listtexterrorf("Illegal character in hostname");
+		return;
+	}
 
 	/* TODO urlencode strings here */
-	printf("\t%s\t%s\t%d\r\n",
-		path, server, port);
+	printf("%c%s\t%s\t%s\t%d\r\n",
+		ft, s, path, server, port);
+
+	free(s);
 }
 
 /*
@@ -101,6 +137,14 @@ enum filetype findtype(const char *ext) {
 
 	/* unrecognised: binary */
 	return ft_binary;
+}
+
+static void listtexterrorf(const char *fmt, ...) {
+	va_list ap;
+
+	va_start(ap, fmt);
+	vmenuitem(ft_error, "fake", "(NULL)", 0, fmt, ap);
+	va_end(ap);
 }
 
 /*
@@ -149,7 +193,7 @@ static void listfile(const char *filename, const char *ext, const char *parent) 
 	assert(filename);
 	assert(parent);
 
-	slen = strlen(filename) + strlen(parent) + sizeof("/");
+	slen = strlen(filename) + strlen(parent) + strlen("/");
 	errno = 0;
 	s = malloc(slen + 1);
 	if(!s) {
@@ -163,7 +207,7 @@ static void listfile(const char *filename, const char *ext, const char *parent) 
 	}
 
 	/* TODO append directory listing details: filesize, date etc */
-	snprintf(s, slen, !strcmp(parent, "/") ? "%s%s" : "%s/%s", parent, filename);
+	snprintf(s, slen + 1, !strcmp(parent, "/") ? "%s%s" : "%s/%s", parent, filename);
 	menuitem(ft, s, SERVER, PORT, "%s - %s", filename, "53Kb" /* TODO */);
 
 	free(s);
@@ -180,7 +224,7 @@ static void listdir(const char *dirname, const char *parent) {
 	assert(dirname);
 	assert(parent);
 
-	slen = strlen(dirname) + strlen(parent) + sizeof("/");
+	slen = strlen(dirname) + strlen(parent) + strlen("/");
 	errno = 0;
 	s = malloc(slen + 1);
 	if(!s) {
@@ -188,7 +232,7 @@ static void listdir(const char *dirname, const char *parent) {
 	}
 
 	/* TODO append directory details here (number of entries) */
-	snprintf(s, slen, !strcmp(parent, "/") ? "%s%s" : "%s/%s", parent, dirname);
+	snprintf(s, slen + 1, !strcmp(parent, "/") ? "%s%s" : "%s/%s", parent, dirname);
 	menuitem(ft_dir, s, SERVER, PORT, "%s", dirname);
 
 	free(s);
@@ -304,6 +348,7 @@ int main(void) {
 	struct stat sb;
 
 	/* TODO getopt: at least -h. probably also the server name and port */
+	/* TODO some option to specify a banner file for "welcome to such-and-such server" */
 	/* TODO does inetd provide those as environment variables? */
 
 	fgets(selector, PATH_MAX + 1, stdin);
