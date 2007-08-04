@@ -9,14 +9,12 @@
  * $Id$
  */
 
-/* TODO menuerror() wrapper in place of perror to provide properly-formatted messages */
-/* TODO menuinfo() (variadic) to provide properly-formatted informational messages */
-
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <stdlib.h>
 #include <limits.h>
 #include <string.h>
+#include <stdarg.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -37,22 +35,45 @@ enum filetype {
 	ft_image	= 'I',
 	ft_audio	= 's',
 	ft_text 	= '0',
-	ft_dir		= '1'
+	ft_dir		= '1',
+	ft_info		= 'i',
+	ft_error	= '3'
 };
 
 /*
  * Output a single menu item. The strings passed in are unescaped.
  */
-void menuitem(enum filetype ft, const char *name, const char *path, const char *parent) {
-	assert(name);
+static void vmenuitem(enum filetype ft, const char *path, const char *parent, const char *server, unsigned short port, const char *namefmt, va_list ap) {
+	assert(parent);
 	assert(path);
+	assert(namefmt);
 
-	/* TODO urlencode name here */
 	/* TODO omit paths with odd characters */
 	/* TODO cleanup paths: strip prepending ./ etc, Empty paths can become '/' */
 
-	printf("%c%s\t%s/%s\t%s\t%d\r\n",
-		ft, name, parent, path, SERVER, PORT);
+	printf("%c", ft);
+
+	/* TODO urlencode name here */
+	vprintf(namefmt, ap);
+
+	/* TODO urlencode strings here */
+	printf("\t%s/%s\t%s\t%d\r\n",
+		parent, path, server, port);
+}
+
+/*
+ * Output a single menu item. The strings passed in are unescaped.
+ */
+static void menuitem(enum filetype ft, const char *path, const char *parent, char *server, unsigned short port, const char *namefmt, ...) {
+	va_list ap;
+
+	assert(parent);
+	assert(path);
+	assert(namefmt);
+
+	va_start(ap, namefmt);
+	vmenuitem(ft, path, parent, server, port, namefmt, ap);
+	va_end(ap);
 }
 
 enum filetype findtype(const char *ext) {
@@ -84,9 +105,28 @@ enum filetype findtype(const char *ext) {
 }
 
 /*
+ * Create an error listing and exit.
+ */
+static void listerror(const char *msg) {
+	menuitem(ft_error, "fake", "", "(NULL)", 0, "%s: %s", msg, strerror(errno));
+}
+
+/*
+ * Create a listing for informational text. printf-style formatting is
+ * provided.
+ */
+static void listinfo(const char *fmt, ...) {
+	va_list ap;
+
+	va_start(ap, fmt);
+	vmenuitem(ft_info, "fake", "", "(NULL)", 0, fmt, ap);
+	va_end(ap);
+}
+
+/*
  * Create a listing for a single file item.
  */
-void listfile(const char *path, const char *ext, const char *parent) {
+static void listfile(const char *path, const char *ext, const char *parent) {
 	enum filetype ft;
 
 	assert(path);
@@ -95,30 +135,33 @@ void listfile(const char *path, const char *ext, const char *parent) {
 	ft = findtype(ext);
 
 	/* TODO append directory listing details: filesize, date etc */
-	menuitem(ft, path, path, parent);
+	/* TODO escape out printf format before passing namefmt */
+	menuitem(ft, path, parent, SERVER, PORT, path);
 }
 
 /*
- * Create a listing for a single directory item.
+ * Create a listing for a single directory item. Note that trailing
+ * slashes are not appended, as the display is the client's choice.
  */
-void listdir(const char *path, const char *parent) {
+static void listdir(const char *path, const char *parent) {
 	char *s;
 	size_t slen;
 
 	assert(path);
 	assert(parent);
 
-	slen = strlen(path) + sizeof("/") + strlen(parent);
+	slen = strlen(path) + strlen(parent);
 	errno = 0;
 	s = malloc(slen + 1);
 	if(!s) {
-		perror("3malloc");
+		listerror("malloc");
 		exit(EXIT_FAILURE);
 	}
 
 	/* TODO append directory details here (number of entries) */
-	snprintf(s, slen + sizeof("/"), "%s/", path);
-	menuitem(ft_dir, s, s, parent);
+	snprintf(s, slen, "%s", path);
+	/* TODO escape out printf format before passing namefmt */
+	menuitem(ft_dir, s, parent, SERVER, PORT, s);
 
 	free(s);
 }
@@ -126,27 +169,29 @@ void listdir(const char *path, const char *parent) {
 /*
  * Create a menu listing all the contents of the given directory.
  */
-void dirmenu(const char *path) {
+static void dirmenu(const char *path) {
 	DIR *od;
 	struct dirent de;
 	struct dirent *dep;
+	unsigned int i;
    
 	assert(path);
 
 	errno = 0;
 	od = opendir(path);
 	if(!od) {
-		perror("3opendir");
+		listerror("opendir");
 		exit(EXIT_FAILURE);
 	}
 
-	/* TODO escape path */
-	printf("iDirectory listing for %s:\tfake\t(NULL)\t0\r\n", path);
+	listinfo("Index of %s", path);
+	listinfo("");
 
-	for(;;) {
+	i = 0;
+	for(; ;) {
 		errno = 0;
 		if(readdir_r(od, &de, &dep)) {
-			perror("3readdir_r");
+			listerror("readdir_r");
 			exit(EXIT_FAILURE);
 		}
 
@@ -163,6 +208,7 @@ void dirmenu(const char *path) {
 		case DT_DIR:
 			/* TODO possibly show a configurable level of subentries? */
 			listdir(de.d_name, path);
+			i++;
 			break;
 
 		case DT_REG:
@@ -172,6 +218,7 @@ void dirmenu(const char *path) {
 				ext = strrchr(de.d_name, '.');
 				listfile(de.d_name, ext ? ext + 1 : NULL, path);
 			}
+			i++;
 			break;
 	
 		default:
@@ -180,13 +227,16 @@ void dirmenu(const char *path) {
 		}
 	}
 
+	listinfo("");
+	listinfo("%d item%s total", i, i == 1 ? "" : "s");
+
 	closedir(od);
 }
 
 /*
  * Output the given file.
  */
-void mapfile(const char *path, size_t len) {
+static void mapfile(const char *path, size_t len) {
 	void *mm;
 	int fd;
 
@@ -200,14 +250,14 @@ void mapfile(const char *path, size_t len) {
 	fd = open(path, O_RDONLY);
 	/* TODO handle error gracefully */
 	if(fd == -1) {
-		perror("3open");
+		listerror("open");
 		exit(EXIT_SUCCESS);
 	}
 
 	errno = 0;
 	mm = mmap(NULL, len, PROT_READ, MAP_FILE, fd, 0);
 	if(mm == MAP_FAILED) {
-		perror("3mmap");
+		listerror("mmap");
 		exit(EXIT_FAILURE);
 	}
 
@@ -234,7 +284,7 @@ int main(void) {
 
 	errno = 0;
 	if(stat(selector, &sb) == -1) {
-		perror("3stat");
+		listerror("stat");
 		exit(EXIT_SUCCESS);
 	}
 
@@ -247,6 +297,7 @@ int main(void) {
 		mapfile(selector, sb.st_size);
 
 		/* If it's not binary, end with a '.' */
+		/* TODO do pictures need this? */
 		ext = strrchr(selector, '.');
 		if(findtype(ext) != ft_binary) {
 			printf(".\r\n");
