@@ -23,6 +23,7 @@
 #include <errno.h>
 #include <dirent.h>
 #include <assert.h>
+#include <magic.h>
 
 static void listtexterrorf(const char *fmt, ...);
 
@@ -111,12 +112,20 @@ static void menuitem(enum filetype ft, const char *path, char *server, unsigned 
 	va_end(ap);
 }
 
-enum filetype findtype(const char *ext) {
+/*
+ * Attempt to find a file's type. If the extension is not recognised,
+ * an attempt is made to guess the file's contents via libmagic.
+ */
+static void listinfo(const char *fmt, ...) ;
+enum filetype findtype(const char *ext, const char *path) {
+	magic_t mt;
+	const char *ms;
+	enum filetype ft;
+
 	/* TODO: replace with binary-search table. Or maybe a list of regexps */
 	/* TODO find usual extensions for BinHex (4) and UUE (6) */
 	if(ext == NULL) {
-		/* unknown: binary */
-		return ft_binary;
+		goto magic;
 	} else if(!strcasecmp(ext, "txt")) {
 		/* plain text */
 		return ft_text;
@@ -135,8 +144,36 @@ enum filetype findtype(const char *ext) {
 		return ft_audio;
 	}
 
-	/* unrecognised: binary */
-	return ft_binary;
+magic:
+	/* unrecognised extension: attempt to guess by contents */
+	mt = magic_open(MAGIC_SYMLINK | MAGIC_ERROR | MAGIC_MIME);
+	if(!mt) {
+		return ft_binary;
+	}
+
+	if(magic_load(mt, NULL) == -1) {
+		return ft_binary;
+	}
+
+	ms = magic_file(mt, path);
+	if(!ms) {
+		listinfo("%s: %s", path, magic_error(mt));
+		return ft_binary;
+	}
+
+	/* TODO map in more mime types here */
+	if(!strncmp(ms, "text/html", strlen("text/html"))) {
+		ft = ft_html;
+	} else if(!strncmp(ms, "text/", strlen("text/"))) {
+		ft = ft_text;
+	} else {
+		/* still unrecognised: binary */
+		ft = ft_binary;
+	}
+
+	magic_close(mt);
+
+	return ft;
 }
 
 static void listtexterrorf(const char *fmt, ...) {
@@ -200,14 +237,15 @@ static void listfile(const char *filename, const char *ext, const char *parent) 
 		listerror("malloc");
 	}
 
-	ft = findtype(ext);
+	snprintf(s, slen + 1, !strcmp(parent, "/") ? "%s%s" : "%s/%s", parent, filename);
+
+	ft = findtype(ext, s);
 	if(ft == ft_binary && isupperstr(filename)) {
 		/* Entirely uppercase files are usually text */
 		ft = ft_text;
 	}
 
 	/* TODO append directory listing details: filesize, date etc */
-	snprintf(s, slen + 1, !strcmp(parent, "/") ? "%s%s" : "%s/%s", parent, filename);
 	menuitem(ft, s, SERVER, PORT, "%s - %s", filename, "53Kb" /* TODO */);
 
 	free(s);
@@ -375,7 +413,7 @@ int main(void) {
 		/* If it's not binary, end with a '.' */
 		/* TODO do pictures need this? */
 		ext = strrchr(selector, '.');
-		if(findtype(ext) != ft_binary) {
+		if(findtype(ext, selector) != ft_binary) {
 			printf(".\r\n");
 		}
 	}
