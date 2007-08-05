@@ -2,8 +2,8 @@ CFLAGS=-Wall -pedantic -ansi -lmagic -lz
 
 REMOVE=rm -f
 
-gopher: gopher.o
+gopherd: gopherd.o
 
 clean:
-	${REMOVE} gopher.o gopher
+	${REMOVE} gopherd.o gopherd
 
