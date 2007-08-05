@@ -11,6 +11,7 @@
 
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <sys/param.h>
 #include <stdlib.h>
 #include <limits.h>
 #include <string.h>
@@ -24,11 +25,17 @@
 #include <dirent.h>
 #include <assert.h>
 #include <magic.h>
+#include <pwd.h>
 
 static void listtexterrorf(const char *fmt, ...);
 
-#define SERVER "localhost"
-#define PORT 70
+/*
+ * Default server address and port.
+ */
+char *SERVER = "localhost";
+unsigned short PORT = 70;
+char *root;
+bool chrooted;
 
 /*
  * Gopher menu types. These are the first character in menus.
@@ -123,7 +130,7 @@ enum filetype findtype(const char *ext, const char *path) {
 	enum filetype ft;
 
 	/* TODO: replace with binary-search table. Or maybe a list of regexps */
-	/* TODO find usual extensions for BinHex (4) and UUE (6) */
+	/* TODO find usual extensions for BinHex (4 - hqx, hex, hcx) and UUE (6) */
 	if(ext == NULL) {
 		goto magic;
 	} else if(!strcasecmp(ext, "txt")) {
@@ -157,7 +164,6 @@ magic:
 
 	ms = magic_file(mt, path);
 	if(!ms) {
-		listinfo("%s: %s", path, magic_error(mt));
 		return ft_binary;
 	}
 
@@ -220,6 +226,18 @@ static bool isupperstr(const char *s) {
 }
 
 /*
+ * Strip off the prepended root path if neccessary. This is used to santize the
+ * output when the server is unable to chroot and so has prepended the root.
+ */
+const char *striproot(const char *path) {
+	if(root && !chrooted) {
+		return path + strlen(root);
+	}
+
+	return path;
+}
+
+/*
  * Create a listing for a single file item.
  */
 static void listfile(const char *filename, const char *ext, const char *parent) {
@@ -246,7 +264,7 @@ static void listfile(const char *filename, const char *ext, const char *parent) 
 	}
 
 	/* TODO append directory listing details: filesize, date etc */
-	menuitem(ft, s, SERVER, PORT, "%s - %s", filename, "53Kb" /* TODO */);
+	menuitem(ft, striproot(s), SERVER, PORT, "%s - %s", filename, "53Kb" /* TODO */);
 
 	free(s);
 }
@@ -271,7 +289,7 @@ static void listdir(const char *dirname, const char *parent) {
 
 	/* TODO append directory details here (number of entries) */
 	snprintf(s, slen + 1, !strcmp(parent, "/") ? "%s%s" : "%s/%s", parent, dirname);
-	menuitem(ft_dir, s, SERVER, PORT, "%s", dirname);
+	menuitem(ft_dir, striproot(s), SERVER, PORT, "%s", dirname);
 
 	free(s);
 }
@@ -292,17 +310,6 @@ static void dirmenu(const char *path) {
 	if(!od) {
 		listerror("opendir");
 	}
-
-	/* Simplify the path a little */
-	/* TODO cleanup paths: strip prepending ./ etc, Empty paths can become '/' */
-	if(!strncmp(path, "./", 2)) {
-		path = path + 1;
-	} else if(!strcmp(path, ".")) {
-		path = "/";
-	}
-
-	listinfo("Index of %s", path);
-	listinfo("");
 
 	i = 0;
 	for(;;) {
@@ -370,7 +377,7 @@ static void mapfile(const char *path, size_t len) {
 	}
 
 	errno = 0;
-	mm = mmap(NULL, len, PROT_READ, MAP_FILE, fd, 0);
+	mm = mmap(NULL, len, PROT_READ, MAP_FILE | MAP_PRIVATE, fd, 0);
 	if(mm == MAP_FAILED) {
 		listerror("mmap");
 	}
@@ -381,39 +388,151 @@ static void mapfile(const char *path, size_t len) {
 	close(fd);
 }
 
-int main(void) {
-	char selector[PATH_MAX + 1];
-	struct stat sb;
+/*
+ * Returns the path based from the selector read. The two operations are
+ * combined here because the selector is prepended with the root path if a
+ * chroot cannot be performed. Caller frees.
+ */
+char *readandchroot(const char *user) {
+	char selector[MAXPATHLEN];
+	char path[MAXPATHLEN];
+	struct passwd *pw;
 
-	/* TODO getopt: at least -h. probably also the server name and port */
+	/*
+	 * Find the user to switch to. This must be done before chroot, because
+	 * getpwnam() needs to read /etc/passwd.
+	 */
+	if(user) {
+		errno = 0;
+		pw = getpwnam(user);
+		if(!pw) {
+			listerror("unknown user");
+		}
+	}
+
+	/*
+	 * Perform the chroot. This must be done before changing user as chroot may only
+	 * be done by the root user. If the user is not root, we will prepend the root
+	 * path to our selector further on, as a substitute.
+	 */
+	chrooted = false;
+	if(root && getuid() == 0) {
+		if(chroot(root) == -1) {
+			listerror("chroot");
+		}
+		chrooted = true;
+	}
+
+	/*
+	 * Switch user.
+	 */
+	if(pw) {
+		if(setgid(pw->pw_gid) == -1) {
+			listerror("setgid");
+		}
+
+		if(setuid(pw->pw_uid) == -1) {
+			listerror("setuid");
+		}
+
+		endpwent();
+	}
+
+	/*
+	 * Find and simplify the given selector into a selection path.
+	 */
+	fgets(selector, MAXPATHLEN, stdin);
+	selector[strcspn(selector, "\r\n")] = '\0';
+	if(strlen(selector) == 0) {
+		strcpy(selector, "/");
+	}
+	if(root && !chrooted) {
+		/* TODO if not able to chroot, prepend root to path */
+		char s[MAXPATHLEN];
+
+		strncpy(s, selector, sizeof(s) - 1);
+		s[sizeof(s) - 1] = '\0';
+		snprintf(selector, MAXPATHLEN, "%s/%s", root, s);
+	}
+	if(!realpath(selector, path)) {
+		listerror("realpath");
+	}
+
+	/*
+	 * Check that the selection path is inside the given root.
+	 */
+	if(root && !chrooted) {
+		if(strncmp(path, root, strlen(root))) {
+			errno = EACCES;
+			listerror("root");
+		}
+	}
+
+	return strdup(path);
+}
+
+int main(int argc, char *argv[]) {
+	struct stat sb;
+	int c;
+	char *user = NULL;
+	char *path;
+
 	/* TODO some option to specify a banner file for "welcome to such-and-such server" */
 	/* TODO does inetd provide those as environment variables? */
+	while((c = getopt(argc, argv, "hr:u:")) != -1) {
+		switch(c) {
+		case 'p':
+			PORT = atoi(optarg);
+			break;
 
-	fgets(selector, PATH_MAX + 1, stdin);
-	selector[strcspn(selector, "\r\n")] = '\0';
+		case 's':
+			SERVER = optarg;
+			break;
 
-	if(strlen(selector) == 0) {
-		dirmenu(".");
-		exit(EXIT_SUCCESS);
+		case 'r':
+			root = optarg;
+			break;
+
+		case 'u':
+			user = optarg;
+			break;
+
+		case 'h':
+		case '?':
+		default:
+			/* TODO document usage in a README or somesuch */
+			printf("usage: %s [ -h | -r <root> | -u <user> | -s <server> | -p <port> ]\n", argv[0]);
+			return EXIT_SUCCESS;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	/*
+	 * Initialise and read input selector.
+	 */
+	path = readandchroot(user);
+	if(!path) {
+		listerror("initialise");
 	}
 
 	errno = 0;
-	if(stat(selector, &sb) == -1) {
+	if(stat(path, &sb) == -1) {
 		listerror("stat");
 	}
 
 	if(S_ISDIR(sb.st_mode)) {
-		dirmenu(selector);
+		dirmenu(path);
 		printf(".\r\n");
 	} else {
 		char *ext;
 
-		mapfile(selector, sb.st_size);
+		mapfile(path, sb.st_size);
 
 		/* If it's not binary, end with a '.' */
 		/* TODO do pictures need this? */
-		ext = strrchr(selector, '.');
-		if(findtype(ext, selector) != ft_binary) {
+		ext = strrchr(path, '.');
+		if(findtype(ext, path) != ft_binary) {
 			printf(".\r\n");
 		}
 	}
