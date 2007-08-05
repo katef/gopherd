@@ -3,11 +3,13 @@ LDFLAGS=-lmagic -lz -lm
 
 REMOVE=rm -f
 
+TARGETS=file.o main.o menu.o output.o root.o
+
 all: gopherd
 
 clean:
-	${REMOVE} gopherd.o gopherd
+	${REMOVE} $(TARGETS) gopherd
 
-gopherd: gopherd.o
-	${CC} ${CFLAGS} ${LDFLAGS} -o $@ gopherd.o
+gopherd: $(TARGETS)
+	${CC} ${CFLAGS} ${LDFLAGS} -o $@ $(TARGETS)
 
