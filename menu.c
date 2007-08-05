@@ -131,6 +131,13 @@ void dirmenu(const char *path, const char *server, const unsigned short port) {
 		listerror("opendir");
 	}
 
+	/*
+	 * Show the banner file, if specified.
+	 */
+	if(bannerfile) {
+		listbanner(path);
+	}
+
 	i = 0;
 	for(;;) {
 		errno = 0;
@@ -142,12 +149,26 @@ void dirmenu(const char *path, const char *server, const unsigned short port) {
 			break;
 		}
 
+		/*
+		 * Skip parent and current directories.
+		 */
 		if(!strcmp(de.d_name, ".")
 		|| !strcmp(de.d_name, "..")) {
 			continue;
 		}
 
+		/*
+		 * Skip hidden files, if appropiate.
+		 */
 		if(!showhidden && de.d_name[0] == '.') {
+			continue;
+		}
+
+		/*
+		 * Skip the banner file here, if specified, since it needn't be
+		 * included in listings.
+		 */
+		if(bannerfile && !strcmp(de.d_name, bannerfile)) {
 			continue;
 		}
 
@@ -174,8 +195,13 @@ void dirmenu(const char *path, const char *server, const unsigned short port) {
 		}
 	}
 
-	listinfo("");
-	listinfo("%d item%s total", i, i == 1 ? "" : "s");
+	/*
+	 * If there are no items, this may be a banner-only directory.
+	 */
+	if(bannerfile && i) {
+		listinfo("");
+		listinfo("%d item%s total", i, i == 1 ? "" : "s");
+	}
 
 	closedir(od);
 }

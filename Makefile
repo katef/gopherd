@@ -3,7 +3,7 @@ LDFLAGS=-lmagic -lz -lm
 
 REMOVE=rm -f
 
-TARGETS=file.o main.o menu.o output.o root.o
+TARGETS=file.o main.o menu.o output.o root.o banner.o
 
 all: gopherd
 

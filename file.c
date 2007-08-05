@@ -20,7 +20,7 @@
  * Output the given file.
  */
 void mapfile(const char *path, size_t len) {
-	void *mm;
+	char *mm;
 	int fd;
 
 	assert(path);

@@ -18,7 +18,8 @@ static void listtexterrorf(const char *fmt, ...);
 
 /*
  * Check for presence of illegal characters. Returns false if they exist.
- * Errors within this function are not reported to the client.
+ * Errors within this function are not reported to the client to avoid an
+ * infinite loop.
  */
 static bool checkchars(const char *s) {
 	assert(s);
@@ -33,7 +34,8 @@ static bool checkchars(const char *s) {
 
 /*
  * Output a single menu item. The strings passed in are unescaped.
- * Errors within this function are not reported to the client.
+ * Errors within this function are not reported to the client to
+ * avoid an infinite loop.
  */
 static void vmenuitem(enum filetype ft, const char *path, const char *server, unsigned short port, const char *namefmt, va_list ap) {
 	char *s;
@@ -96,6 +98,7 @@ static void listtexterrorf(const char *fmt, ...) {
  */
 void listerror(const char *msg) {
 	menuitem(ft_error, "fake", "(NULL)", 0, "%s: %s", msg, strerror(errno));
+	printf(".\r\n");
 	exit(EXIT_FAILURE);
 }
 
