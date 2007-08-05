@@ -1,9 +1,13 @@
-CFLAGS=-Wall -pedantic -ansi -lmagic -lz -lm
+CFLAGS=-Wall -pedantic -ansi
+LDFLAGS=-lmagic -lz -lm
 
 REMOVE=rm -f
 
-gopherd: gopherd.o
+all: gopherd
 
 clean:
 	${REMOVE} gopherd.o gopherd
+
+gopherd: gopherd.o
+	${CC} ${CFLAGS} ${LDFLAGS} -o $@ gopherd.o
 
