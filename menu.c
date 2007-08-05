@@ -12,8 +12,11 @@
 #include <stdio.h>
 #include <math.h>
 #include <errno.h>
+#include <stdbool.h>
 
 #include "gopherd.h"
+
+bool showhidden;
 
 /*
  * Return a string of human-readable digits in the form "2.34KB".
@@ -139,8 +142,12 @@ void dirmenu(const char *path, const char *server, const unsigned short port) {
 			break;
 		}
 
-		/* TODO option to show hidden files (-a?) */
-		if(de.d_name[0] == '.') {
+		if(!strcmp(de.d_name, ".")
+		|| !strcmp(de.d_name, "..")) {
+			continue;
+		}
+
+		if(!showhidden && de.d_name[0] == '.') {
 			continue;
 		}
 

@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
 	/* TODO some option to specify a banner file for "welcome to such-and-such server" */
 	/* TODO option to syslog requests */
 	/* TODO does inetd provide those as environment variables? */
-	while((c = getopt(argc, argv, "hr:u:")) != -1) {
+	while((c = getopt(argc, argv, "ahr:u:")) != -1) {
 		switch(c) {
 		case 'p':
 			port = atoi(optarg);
@@ -51,11 +51,15 @@ int main(int argc, char *argv[]) {
 			user = optarg;
 			break;
 
+		case 'a':
+			showhidden = true;
+			break;
+
 		case 'h':
 		case '?':
 		default:
-			/* TODO document usage in a README or somesuch */
-			printf("usage: %s [ -h | -r <root> | -u <user> | -s <server> | -p <port> ]\n", argv[0]);
+			/* TODO document usage in a manpage or somesuch */
+			printf("usage: %s [ -h | -a | -r <root> | -u <user> | -s <server> | -p <port> ]\n", argv[0]);
 			return EXIT_SUCCESS;
 		}
 	}

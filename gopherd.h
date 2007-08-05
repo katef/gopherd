@@ -26,6 +26,7 @@ enum filetype {
 
 extern char *root;
 extern bool chrooted;
+extern bool showhidden;
 
 /* file.c */
 void mapfile(const char *path, size_t len);
