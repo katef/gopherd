@@ -1,4 +1,4 @@
-CFLAGS=-Wall -pedantic -ansi -lmagic -lz
+CFLAGS=-Wall -pedantic -ansi -lmagic -lz -lm
 
 REMOVE=rm -f
 

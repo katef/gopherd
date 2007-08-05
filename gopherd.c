@@ -2,7 +2,7 @@
  * A gopher server. Menus are generated for directory listings.
  * This is intended to be launched from inetd. Something like:
  * 
- *  gopher stream tcp nowait nobody /path/to/gopher gopher
+ *  gopher stream tcp nowait nobody /path/to/gopherd gopherd
  *
  * For the moment, the server and port are hardcoded here.
  *
@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <string.h>
+#include <math.h>
 #include <stdbool.h>
 #include <ctype.h>
 #include <stdarg.h>
@@ -49,7 +50,8 @@ enum filetype {
 	ft_text 	= '0',
 	ft_dir		= '1',
 	ft_info		= 'i',
-	ft_error	= '3'
+	ft_error	= '3',
+	ft_binhex	= '4'
 };
 
 /*
@@ -78,8 +80,6 @@ static void vmenuitem(enum filetype ft, const char *path, const char *server, un
 	assert(server);
 	assert(namefmt);
 
-	/* TODO omit paths with odd characters? */
-
 	vasprintf(&s, namefmt, ap);
 	if(!s) {
 		exit(EXIT_FAILURE);
@@ -98,7 +98,6 @@ static void vmenuitem(enum filetype ft, const char *path, const char *server, un
 		return;
 	}
 
-	/* TODO urlencode strings here */
 	printf("%c%s\t%s\t%s\t%d\r\n",
 		ft, s, path, server, port);
 
@@ -130,7 +129,6 @@ enum filetype findtype(const char *ext, const char *path) {
 	enum filetype ft;
 
 	/* TODO: replace with binary-search table. Or maybe a list of regexps */
-	/* TODO find usual extensions for BinHex (4 - hqx, hex, hcx) and UUE (6) */
 	if(ext == NULL) {
 		goto magic;
 	} else if(!strcasecmp(ext, "txt")) {
@@ -149,6 +147,10 @@ enum filetype findtype(const char *ext, const char *path) {
 		|| !strcasecmp(ext, "mp3")) {
 		/* audio */
 		return ft_audio;
+	} else if(!strcasecmp(ext, "hqx")
+		|| !strcasecmp(ext, "hcx")) {
+		/* BinHex - Also .hex, but we let libmagic determine that */
+		return ft_binhex;
 	}
 
 magic:
@@ -167,7 +169,7 @@ magic:
 		return ft_binary;
 	}
 
-	/* TODO map in more mime types here */
+	/* TODO map in more mime types here, including UUE (6) and BinHex (4) */
 	if(!strncmp(ms, "text/html", strlen("text/html"))) {
 		ft = ft_html;
 	} else if(!strncmp(ms, "text/", strlen("text/"))) {
@@ -211,21 +213,6 @@ static void listinfo(const char *fmt, ...) {
 }
 
 /*
- * Find if a string is entirely uppercase.
- */
-static bool isupperstr(const char *s) {
-	while(*s) {
-		if(!isupper((int)*s)) {
-			return false;
-		}
-
-		s++;
-	}
-
-	return true;
-}
-
-/*
  * Strip off the prepended root path if neccessary. This is used to santize the
  * output when the server is unable to chroot and so has prepended the root.
  */
@@ -235,6 +222,38 @@ const char *striproot(const char *path) {
 	}
 
 	return path;
+}
+
+/*
+ * Return a string of human-readable digits in the form "2.34KB".
+ * Caller frees.
+ */
+static char *humanreadable(double size) {
+#define DIGITS 255
+	char buffer[DIGITS];
+
+	if(size < 1) {
+		snprintf(buffer, DIGITS, "0");
+	} else if(size < 1000) {
+		snprintf(buffer, DIGITS, "%dB", (int)size);
+	} else if(size < 1000000) {
+		snprintf(buffer, DIGITS, "%.2fkB", size / 1024);
+	} else {
+		const char unit[] = "MGTP";
+		int i;
+
+		for(i = 3; ; i++) {
+			if(size >= pow(1000, i) && unit[i - 2]) {
+				continue;
+			}
+
+			snprintf(buffer, DIGITS, "%.02f%cB", size / pow(1024, i - 1), unit[i - 3]);
+			break;
+		}
+	}
+
+	return strdup(buffer);
+#undef DIGITS
 }
 
 /*
@@ -258,13 +277,20 @@ static void listfile(const char *filename, const char *ext, const char *parent) 
 	snprintf(s, slen + 1, !strcmp(parent, "/") ? "%s%s" : "%s/%s", parent, filename);
 
 	ft = findtype(ext, s);
-	if(ft == ft_binary && isupperstr(filename)) {
-		/* Entirely uppercase files are usually text */
-		ft = ft_text;
-	}
 
-	/* TODO append directory listing details: filesize, date etc */
-	menuitem(ft, striproot(s), SERVER, PORT, "%s - %s", filename, "53Kb" /* TODO */);
+	/* TODO append directory listing details: date etc */
+	{
+		char *size;
+		struct stat sb;
+
+		if(stat(s, &sb) == -1) {
+			listerror("stat");
+		}
+
+		size = humanreadable(sb.st_size);
+		menuitem(ft, striproot(s), SERVER, PORT, "%s - %s", filename, size);
+		free(size);
+	}
 
 	free(s);
 }
@@ -371,7 +397,6 @@ static void mapfile(const char *path, size_t len) {
 
 	errno = 0;
 	fd = open(path, O_RDONLY);
-	/* TODO handle error gracefully */
 	if(fd == -1) {
 		listerror("open");
 	}
@@ -447,7 +472,6 @@ char *readandchroot(const char *user) {
 		strcpy(selector, "/");
 	}
 	if(root && !chrooted) {
-		/* TODO if not able to chroot, prepend root to path */
 		char s[MAXPATHLEN];
 
 		strncpy(s, selector, sizeof(s) - 1);
