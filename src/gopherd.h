@@ -8,6 +8,9 @@
 #include <sys/types.h>
 #include <stdbool.h>
 
+#define VERSION "0.1"
+#define AUTHOR "Kate F"
+
 /*
  * Gopher menu types. These are the first character in menus.
  */
@@ -29,6 +32,9 @@ extern char *root;
 extern bool chrooted;
 extern bool showhidden;
 extern char *bannerfile;
+
+/* main.c */
+unsigned short getservport(const char *service);
 
 /* file.c */
 void mapfile(const char *path, size_t len);

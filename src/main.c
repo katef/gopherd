@@ -9,20 +9,41 @@
  * $Id$
  */
 
+#include <arpa/inet.h>
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <netdb.h>
 #include <stdio.h>
 #include <errno.h>
 
 #include "gopherd.h"
 
 /*
- * Default server address and port.
+ * Default server address and port. The port is set below.
  */
 char *server = "localhost";
 unsigned short port = 70;
+
+/*
+ * Lookup the default port of a given service.
+ */
+unsigned short getservport(const char *service) {
+	unsigned short port;
+	struct servent *se;
+
+	errno = 0;
+	se = getservbyname(service, NULL);
+	if(!se) {
+		listerror("getservbyname");
+	}
+
+	port = ntohs(se->s_port);
+	endservent();
+
+	return port;
+}
 
 int main(int argc, char *argv[]) {
 	struct stat sb;
@@ -30,10 +51,15 @@ int main(int argc, char *argv[]) {
 	char *user = NULL;
 	char *path;
 
+	/*
+	 * Set the default port for responses. This may be overridden below.
+	 */
+	port = getservport("gopher");
+
 	/* TODO some option to specify a banner file for "welcome to such-and-such server" */
 	/* TODO option to syslog requests */
 	/* TODO does inetd provide those as environment variables? */
-	while((c = getopt(argc, argv, "ahr:u:b:")) != -1) {
+	while((c = getopt(argc, argv, "vahr:u:b:")) != -1) {
 		switch(c) {
 		case 'p':
 			port = atoi(optarg);
@@ -58,6 +84,11 @@ int main(int argc, char *argv[]) {
 		case 'a':
 			showhidden = true;
 			break;
+
+		case 'v':
+			/* TODO from last / for argv[0] */
+			printf("%s %s, %s\n", argv[0], VERSION, AUTHOR);
+			return EXIT_SUCCESS;
 
 		case 'h':
 		case '?':

@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN" "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">
+<!-- $Id$ -->
+<refentry id="gopherd8">
+	<refmeta>
+		<refentrytitle>gopherd</refentrytitle>
+		<manvolnum>8</manvolnum>
+	</refmeta>
+
+	<refnamediv id="name">
+		<refname>gopherd</refname>
+		<refpurpose>Internet gopher inetd server</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv id="synopsis">
+		<cmdsynopsis>
+			<command>gopherd</command>
+
+			<group>
+				<arg choice="opt">-h</arg>
+				<arg choice="opt">-?</arg>
+			</group>
+
+			<arg choice="opt">-r <replaceable>directory</replaceable></arg>
+			<arg choice="opt">-p <replaceable>port</replaceable></arg>
+			<arg choice="opt">-s <replaceable>server</replaceable></arg>
+			<arg choice="opt">-u <replaceable>user</replaceable></arg>
+			<arg choice="opt">-b <replaceable>banner</replaceable></arg>
+			<arg choice="opt">-a</arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsection id="description">
+		<title>Description</title>
+
+		<para><application>gopherd</application> serves files via the Gopher
+			Protocol. These files are presented as a simple directory listing.
+			Individual files from this list may be selected, and their contents
+			served over the protocol. Special files are omitted.</para>
+
+		<para>It is intended that a Gopher client application is used to view
+			the listings served.</para>
+
+		<para>The server is intended to be run as an <citerefentry>
+				<refentrytitle>inetd</refentrytitle>
+				<manvolnum>8</manvolnum>
+			</citerefentry> service. It will serve one request and
+			then exit. For example, with an <citerefentry>
+				<refentrytitle>inetd.conf</refentrytitle>
+				<manvolnum>5</manvolnum>
+			</citerefentry> configuration line along the lines of:</para>
+
+			<programlisting language="inetd.conf">gopher stream tcp nowait nobody /path/to/gopherd gopherd [-options]</programlisting>
+
+		<para>Banner files provide a mechanism for prepending possible
+			informational content, or as an alternative to the list of
+			files served.</para>
+
+		<para>The following options are supported:</para>
+
+		<variablelist>
+			<varlistentry>
+				<term><option>-r</option> <replaceable>directory</replaceable></term>
+
+				<listitem>
+					<para>Take <replaceable>directory</replaceable> as the root
+						path from which selectors are based. If the server is
+						running as root then it will attempt to <citerefentry>
+							<refentrytitle>chroot</refentrytitle>
+							<manvolnum>2</manvolnum>
+						</citerefentry> to this directory before serving.
+						If it is running as a non-root user, the directory is
+						prepended to the client's selector and stripped from
+						the output menu items. There is no difference in the
+						selectors used by the client in either case.</para>
+
+					<para>If the server is not running as root (and therefore
+						does not attempt to <citerefentry>
+							<refentrytitle>inetd</refentrytitle>
+							<manvolnum>8</manvolnum>
+						</citerefentry>, relative paths are normalised within
+						the given selector by way of <citerefentry>
+							<refentrytitle>realpath</refentrytitle>
+							<manvolnum>3</manvolnum>
+						</citerefentry>. Attempts to request files outside of
+						the given <option>directory</option> are denied.</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>-p</option> <replaceable>port</replaceable></term>
+
+				<listitem>
+					<para>Provide <option>port</option> as the port to which to
+						connect to retrieve files. This should be the same port
+						on which <citerefentry>
+							<refentrytitle>inetd</refentrytitle>
+							<manvolnum>8</manvolnum>
+						</citerefentry> is configured to serve the initial
+						connection. If no port is given, the default for the
+						<literal>gopher</literal> service is used.</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>-s</option> <replaceable>server</replaceable></term>
+
+				<listitem>
+					<para>Provide <option>server</option> as the server to
+						which to connect to retrieve files. This is a hostname
+						or <acronym>IP</acronym> address. This should be the
+						same server on which <citerefentry>
+							<refentrytitle>inetd</refentrytitle>
+							<manvolnum>8</manvolnum>
+						</citerefentry> is configured to serve the initial
+						connection. If no server is given, the default is
+						<literal>localhost</literal>.</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>-u</option> <replaceable>user</replaceable></term>
+
+				<listitem>
+					<para>The user to which to <citerefentry>
+							<refentrytitle>setuid</refentrytitle>
+							<manvolnum>2</manvolnum>
+						</citerefentry>. It is intended that this be an
+						unprivileged user such as <literal>nobody</literal>.
+						The running server's group is also switched to the
+						given user's group.  If given in combination with
+						<option>-r</option> the user is changed after
+						<citerefentry>
+							<refentrytitle>chroot</refentrytitle>
+							<manvolnum>2</manvolnum>
+						</citerefentry>.</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>-b</option> <replaceable>banner</replaceable></term>
+
+				<listitem>
+					<para>Within each directory listed, the file
+						<replaceable>banner</replaceable> is taken as a
+						banner file. The contents of this file are prepended
+						as informational lines before the listing is output.
+						The banner file is then excluded from the directory
+						listing.</para>
+
+					<para>The banner file format is plaintext, with lines
+						separated by the newline character. Each line is
+						output via the Gopher protocol as an independent
+						informational menu item. Since clients are expected
+						to display these lines as-is, it is advisable to
+						keep these lines to 80 columns or below.</para>
+
+					<para>Lines consisting of <acronym>URL</acronym>-style
+						hyperlinks are read and output as appropriate
+						menu items. The services
+						<literal>gopher://</literal>,
+						<literal>http://</literal> and
+						<literal>telnet://</literal> are recognised.
+						Optionally, a port specifier may be given after the
+						server name, which defaults to the port defined for
+						that service if unspecified. For example:</para>
+
+					<programlisting language="banner">http://google.com/
+http://localhost:8080/someimage.png</programlisting>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>-a</option></term>
+
+				<listitem>
+					<para>Include hidden files (that is, those who's names
+						begin with a period '.') in the menus' generated
+						directory listings.</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>-v</option></term>
+
+				<listitem>
+					<para>Display a version identifier, and exit.</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>-h</option></term>
+				<term><option>-?</option></term>
+
+				<listitem>
+					<para>Display a brief reminder of the command-line options,
+						and exit.</para>
+				</listitem>
+			</varlistentry>
+		</variablelist>
+	</refsection>
+
+	<refsection>
+		<title>Environment</title>
+
+		<para>None.</para>
+	</refsection>
+
+	<refsection>
+		<title>Files</title>
+
+		<para>All files under the <option>-r</option> argument are served,
+			save for those omitted as the server deems appropiate.</para>
+
+		<para>The <citerefentry>
+				<refentrytitle>services</refentrytitle>
+				<manvolnum>5</manvolnum>
+			</citerefentry> database is used to look up the default port
+			for a given service. The <citerefentry>
+				<refentrytitle>passwd</refentrytitle> 
+				<manvolnum>5</manvolnum>
+			</citerefentry> database is used to find the user
+			<acronym>ID</acronym> from a given username.</para>
+	</refsection>
+
+	<refsection>
+		<title>See Also</title>
+
+		<para><citerefentry>
+			<refentrytitle>gopher</refentrytitle>
+			<manvolnum>1</manvolnum>
+		</citerefentry>, <citerefentry>
+			<refentrytitle>chroot</refentrytitle>
+			<manvolnum>2</manvolnum>
+		</citerefentry>, <citerefentry>
+			<refentrytitle>setuid</refentrytitle>
+			<manvolnum>2</manvolnum>
+		</citerefentry>, <citerefentry>
+			<refentrytitle>setgid</refentrytitle>
+			<manvolnum>2</manvolnum>
+		</citerefentry>, <citerefentry>
+			<refentrytitle>realpath</refentrytitle>
+			<manvolnum>3</manvolnum>
+		</citerefentry>, <citerefentry>
+			<refentrytitle>libmagic</refentrytitle>
+			<manvolnum>3</manvolnum>
+		</citerefentry>, <citerefentry>
+			<refentrytitle>passwd</refentrytitle>
+			<manvolnum>5</manvolnum>
+		</citerefentry>, <citerefentry>
+			<refentrytitle>services</refentrytitle>
+			<manvolnum>5</manvolnum>
+		</citerefentry>, <citerefentry>
+			<refentrytitle>inetd.conf</refentrytitle>
+			<manvolnum>5</manvolnum>
+		</citerefentry>, <citerefentry>
+			<refentrytitle>inetd</refentrytitle>
+			<manvolnum>8</manvolnum>
+		</citerefentry>.</para>
+
+		<para><citetitle><acronym>RFC</acronym> 1436 - The Internet Gopher
+			Protocol</citetitle>, <citetitle><acronym>RFC</acronym> 1945
+			- Hypertext Transfer Protocol</citetitle>,
+			<citetitle><acronym>RFC</acronym> 854 - Telnet Protocol
+			Specification</citetitle>.</para>
+	</refsection>
+
+	<refsection>
+		<title>Standards</title>
+
+		<para>The protocol implemented conforms to
+			<citetitle><acronym>RFC</acronym> 1436</citetitle>. The
+			<acronym>URL</acronym> links parsed in banner files
+			are a subset of <citetitle><acronym>RFC</acronym> 1738 -
+			Uniform Resource Locators</citetitle>.</para>
+	</refsection>
+
+	<refsection>
+		<title>Caveats</title>
+
+		<!-- TODO can we trust realpath? -->
+
+		<para>There is no provision for logging events.</para>
+
+		<para><citerefentry>
+				<refentrytitle>libmagic</refentrytitle>
+				<manvolnum>3</manvolnum>
+			</citerefentry> is imperfect at automatically determining the type
+			of a file from its content; sometimes menus will list inappropriate
+			types as a result. In most cases, the server will err on the side
+			of caution and list these as binary (item type 9).</para>
+
+		<para>The Gopher+ protocol is not implemented. Therefore the
+			traditional <quote><literal>GET&#160;/</literal></quote>
+			work-around for file names is used for <acronym>HTTP</acronym>
+			links, which are therefore <acronym>HTTP</acronym> version 1.0
+			only.</para>
+
+		<para>Gopher's search facility (menu item type 7) is not
+			implemented.</para>
+	</refsection>
+
+	<refsection>
+		<title>Bugs</title>
+
+		<para><citerefentry>
+				<refentrytitle>inetd</refentrytitle>
+				<manvolnum>8</manvolnum>
+			</citerefentry> provides no way to programmatically determine the
+			hostname and port from which a service is started. The
+			<option>-s</option> and <option>-p</option> options are a
+			work-around for this.</para>
+		<!-- TODO maybe try getpeername from stdin? -->
+
+		<para>Don't use <citerefentry>
+			<refentrytitle>firefox</refentrytitle>
+			<manvolnum>1</manvolnum>
+		</citerefentry> as a Gopher client. It does not conform to the <acronym>RFC</acronym>.</para>
+	</refsection>
+</refentry>
+

@@ -8,12 +8,10 @@
  * $Id$
  */
 
-#include <arpa/inet.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <netdb.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -33,7 +31,6 @@ char *bannerfile;
  */
 static bool urlsplit(char *url, char **server, unsigned short *port, char **path, bool *defaultport, char **service) {
 	char *p;
-	struct servent *se;
 
 	*server = strstr(url, "://");
 	if(!*server) {
@@ -76,16 +73,8 @@ static bool urlsplit(char *url, char **server, unsigned short *port, char **path
 	 * A port was not given, so we can look it up from the services database.
 	 * url has been terminated at the "://" so that it contains only a service.
 	 */
-	errno = 0;
-	se = getservbyname(url, NULL);
-	if(!se) {
-		listerror("getservbyname");
-	}
-
-	*port = ntohs(se->s_port);
+	*port = getservport(url);
 	*defaultport = true;
-
-	endservent();
 
 	return true;
 }

@@ -1,3 +1,5 @@
+# $Id$
+
 CFLAGS=-Wall -pedantic -ansi
 LDFLAGS=-lmagic -lz -lm
 
