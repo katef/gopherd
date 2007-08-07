@@ -95,25 +95,29 @@ static void showurl(const enum filetype ft, const char *href, const char *server
  */
 static void showbanner(char *banner) {
 	char *p;
-	char *prev;
 
-	for(p = strtok_r(banner, "\n", &prev); p; p = strtok_r(NULL, "\n", &prev)) {
+	for( ; banner && *banner; banner = p) {
 		char *server;
 		unsigned short port;
 		char *path;
 		char *service;
 		bool defaultport;
 
-		if(!strstr(p, "://")) {
-			listinfo(p);
+		p = strchr(banner, '\n');
+		if(p) {
+			*p++ = '\0';
+		}
+
+		if(!strstr(banner, "://")) {
+			listinfo(banner);
 			continue;
 		}
 
 		/*
 		 * Here we have a url. Attempt to parse it.
 		 */
-		if(!urlsplit(p, &server, &port, &path, &defaultport, &service)) {
-			listinfo(p);
+		if(!urlsplit(banner, &server, &port, &path, &defaultport, &service)) {
+			listinfo(banner);
 			continue;
 		}
 
@@ -143,7 +147,7 @@ static void showbanner(char *banner) {
 		/*
 		 * An unrecognised service.
 		 */
-		listinfo(p);
+		listinfo(banner);
 	}
 
 	listinfo("");
