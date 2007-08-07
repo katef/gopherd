@@ -8,11 +8,19 @@ XSLTFLAGS=--stringparam man.hyphenate 1 --stringparam man.justify 1 --stringpara
 	--stringparam man.links.list.enabled 1
 DOCBOOK=http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl
 REMOVE=rm -f
+INSTALL=install
+
+PREFIX?=/usr/local
+_MANDIR?=${PREFIX}/man
 
 all: gopherd.8
 
 clean:
 	${REMOVE} gopherd.8
+
+install: all
+	${INSTALL} -m 755 -d ${_MANDIR}/man8
+	${INSTALL} -m 644 gopherd.8 ${_MANDIR}/man8/
 
 gopherd.8: gopherd.8.xml
 	${XSLTPROC} ${XSLTFLAGS} -o gopherd.8 ${DOCBOOK} gopherd.8.xml

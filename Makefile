@@ -8,3 +8,7 @@ clean:
 	cd doc && ${MAKE} clean
 	cd src && ${MAKE} clean
 
+install:
+	cd doc && ${MAKE} install
+	cd src && ${MAKE} install
+
