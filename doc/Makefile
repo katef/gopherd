@@ -7,8 +7,12 @@ XSLTFLAGS=--stringparam man.hyphenate 1 --stringparam man.justify 1 --stringpara
 	--stringparam man.hyphenate.computer.inlines 0 --stringparam man.links.are.numbered 1 \
 	--stringparam man.links.list.enabled 1
 DOCBOOK=http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl
+REMOVE=rm -f
 
 all: gopherd.8
+
+clean:
+	${REMOVE} gopherd.8
 
 gopherd.8: gopherd.8.xml
 	${XSLTPROC} ${XSLTFLAGS} -o gopherd.8 ${DOCBOOK} gopherd.8.xml
