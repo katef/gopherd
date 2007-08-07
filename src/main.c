@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
 	/* TODO some option to specify a banner file for "welcome to such-and-such server" */
 	/* TODO option to syslog requests */
 	/* TODO does inetd provide those as environment variables? */
-	while((c = getopt(argc, argv, "vahr:u:b:")) != -1) {
+	while((c = getopt(argc, argv, "vahr:u:b:s:p:")) != -1) {
 		switch(c) {
 		case 'p':
 			port = atoi(optarg);
