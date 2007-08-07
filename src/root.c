@@ -74,7 +74,7 @@ char *readandchroot(const char *user) {
 	/*
 	 * Switch user.
 	 */
-	if(pw) {
+	if(user && pw) {
 		if(setgid(pw->pw_gid) == -1) {
 			listerror("setgid");
 		}
