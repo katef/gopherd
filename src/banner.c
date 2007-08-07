@@ -91,6 +91,34 @@ static void showurl(const enum filetype ft, const char *href, const char *server
 }
 
 /*
+ * Decode a URL. May output to the same string from which it reads.
+ */
+static void urldecode(const char *in, char *out) {
+	char hexpair[] = { '\0' };
+
+	while(*in) {
+		switch(*in++) {
+		case '%':
+			strncpy(hexpair, in, 2);
+			*out = strtol(hexpair, NULL, 16);
+			in += 2;
+			break;
+
+		case '+':
+			*out = ' ';
+			break;
+
+		default:
+			*out = *(in - 1);
+			break;
+		}
+
+		out++;
+	}
+	*out = '\0';
+}
+
+/*
  * Will write over the memory it is passed.
  */
 static void showbanner(char *banner) {
@@ -116,12 +144,12 @@ static void showbanner(char *banner) {
 		/*
 		 * Here we have a url. Attempt to parse it.
 		 */
+		urldecode(banner, banner);
 		if(!urlsplit(banner, &server, &port, &path, &defaultport, &service)) {
 			listinfo(banner);
 			continue;
 		}
 
-		/* TODO urldecode the URLs! */
 		if(!strncmp(service, "http", strlen("http"))) {
 			char *s;
 			size_t slen;
