@@ -27,6 +27,7 @@
 			<arg choice="opt">-u <replaceable>user</replaceable></arg>
 			<arg choice="opt">-b <replaceable>banner</replaceable></arg>
 			<arg choice="opt">-a</arg>
+			<arg choice="opt">-i</arg>
 		</cmdsynopsis>
 	</refsynopsisdiv>
 
@@ -167,6 +168,16 @@
 
 					<programlisting language="banner">http://google.com/
 http://localhost:8080/someimage.png</programlisting>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>-i</option></term>
+
+				<listitem>
+					<para>Disable reporting of file sizes in menus. These
+						are enabled by default, and display sizes in
+						human-readable form.</para>
 				</listitem>
 			</varlistentry>
 

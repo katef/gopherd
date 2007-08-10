@@ -31,6 +31,7 @@ enum filetype {
 extern char *root;
 extern bool chrooted;
 extern bool showhidden;
+extern bool hidesize;
 extern char *bannerfile;
 
 /* main.c */

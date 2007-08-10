@@ -17,6 +17,7 @@
 #include "gopherd.h"
 
 bool showhidden;
+bool hidesize;
 
 /*
  * Return a string of human-readable digits in the form "2.34KB".
@@ -92,8 +93,12 @@ static void listfile(const char *filename, const char *ext, const char *parent, 
 		listerror("stat");
 	}
 
-	size = humanreadable(sb.st_size);
-	menuitem(ft, striproot(s), server, port, "%s - %s", filename, size);
+	if(hidesize) {
+		menuitem(ft, striproot(s), server, port, "%s", filename);
+	} else {
+		size = humanreadable(sb.st_size);
+		menuitem(ft, striproot(s), server, port, "%s - %s", filename, size);
+	}
 	free(size);
 	free(s);
 }

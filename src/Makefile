@@ -8,7 +8,7 @@ INSTALL=install
 
 TARGETS=file.o main.o menu.o output.o root.o banner.o
 
-PREFIX?=/usr/local
+PREFIX?=/usr/localxx
 LIBEXEC?=${PREFIX}/libexec
 
 all: gopherd
