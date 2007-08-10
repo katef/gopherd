@@ -38,14 +38,13 @@ static bool checkchars(const char *s) {
  * avoid an infinite loop.
  */
 static void vmenuitem(enum filetype ft, const char *path, const char *server, unsigned short port, const char *namefmt, va_list ap) {
-	char *s;
+	char s[1024];
 
 	assert(path);
 	assert(server);
 	assert(namefmt);
 
-	vasprintf(&s, namefmt, ap);
-	if(!s) {
+	if(vsnprintf(s, sizeof s, namefmt, ap) >= sizeof s) {
 		exit(EXIT_FAILURE);
 	}
 
@@ -64,8 +63,6 @@ static void vmenuitem(enum filetype ft, const char *path, const char *server, un
 
 	printf("%c%s\t%s\t%s\t%d\r\n",
 		ft, s, path, server, port);
-
-	free(s);
 }
 
 /*

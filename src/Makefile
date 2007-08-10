@@ -1,6 +1,6 @@
 # $Id$
 
-CFLAGS=-Wall -pedantic -ansi
+CFLAGS=-Wall -Werror -pedantic -ansi -D_XOPEN_SOURCE=600
 LDFLAGS=-lmagic -lz -lm
 
 REMOVE=rm -f

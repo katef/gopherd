@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
+#include <strings.h>
 #include <assert.h>
 #include <magic.h>
 

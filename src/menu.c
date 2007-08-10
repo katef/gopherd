@@ -51,41 +51,50 @@ static char *humanreadable(double size) {
 }
 
 /*
- * Create a listing for a single file item.
+ * Concaternate a filename onto a path. Caller frees.
  */
-static void listfile(const char *filename, const char *ext, const char *parent, const char *server, const unsigned short port) {
+static char *allocpath(const char *filename, const char *path) {
 	char *s;
 	size_t slen;
-	enum filetype ft;
 
 	assert(filename);
-	assert(parent);
+	assert(path);
 
-	slen = strlen(filename) + strlen(parent) + strlen("/");
+	slen = strlen(filename) + strlen(path) + strlen("/");
 	errno = 0;
 	s = malloc(slen + 1);
 	if(!s) {
 		listerror("malloc");
 	}
 
-	snprintf(s, slen + 1, !strcmp(parent, "/") ? "%s%s" : "%s/%s", parent, filename);
+	snprintf(s, slen + 1, !strcmp(path, "/") ? "%s%s" : "%s/%s", path, filename);
+	return s;
+}
 
-	ft = findtype(ext, s);
+/*
+ * Create a listing for a single file item.
+ */
+static void listfile(const char *filename, const char *ext, const char *parent, const char *server, const unsigned short port) {
+	enum filetype ft;
+	char *s;
+	char *size;
+	struct stat sb;
+
+	assert(filename);
+	assert(parent);
+
+	ft = findtype(ext, filename);
 
 	/* TODO append directory listing details: date etc */
-	{
-		char *size;
-		struct stat sb;
+	s = allocpath(filename, parent);
 
-		if(stat(s, &sb) == -1) {
-			listerror("stat");
-		}
-
-		size = humanreadable(sb.st_size);
-		menuitem(ft, striproot(s), server, port, "%s - %s", filename, size);
-		free(size);
+	if(stat(s, &sb) == -1) {
+		listerror("stat");
 	}
 
+	size = humanreadable(sb.st_size);
+	menuitem(ft, striproot(s), server, port, "%s - %s", filename, size);
+	free(size);
 	free(s);
 }
 
@@ -95,20 +104,13 @@ static void listfile(const char *filename, const char *ext, const char *parent, 
  */
 static void listdir(const char *dirname, const char *parent, const char *server, const unsigned short port) {
 	char *s;
-	size_t slen;
 
 	assert(dirname);
 	assert(parent);
 
-	slen = strlen(dirname) + strlen(parent) + strlen("/");
-	errno = 0;
-	s = malloc(slen + 1);
-	if(!s) {
-		listerror("malloc");
-	}
+	s = allocpath(dirname, parent);
 
 	/* TODO append directory details here (number of entries) */
-	snprintf(s, slen + 1, !strcmp(parent, "/") ? "%s%s" : "%s/%s", parent, dirname);
 	menuitem(ft_dir, striproot(s), server, port, "%s", dirname);
 
 	free(s);
@@ -140,6 +142,9 @@ void dirmenu(const char *path, const char *server, const unsigned short port) {
 
 	i = 0;
 	for(;;) {
+		char *s;
+		struct stat sb;
+
 		errno = 0;
 		if(readdir_r(od, &de, &dep)) {
 			listerror("readdir_r");
@@ -172,14 +177,21 @@ void dirmenu(const char *path, const char *server, const unsigned short port) {
 			continue;
 		}
 
-		switch(de.d_type) {
-		case DT_DIR:
+		s = allocpath(de.d_name, path);
+
+		if(stat(s, &sb) == -1) {
+			listerror("stat");
+		}
+		free(s);
+
+		switch(sb.st_mode & S_IFMT) {
+		case S_IFDIR:
 			/* TODO possibly show a configurable level of subentries? */
 			listdir(de.d_name, path, server, port);
 			i++;
 			break;
 
-		case DT_REG:
+		case S_IFREG:
 			{
 				char *ext;
 
