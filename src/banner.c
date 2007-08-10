@@ -215,7 +215,7 @@ void listbanner(const char *path) {
 
 	/* We're mapping read/write so we can conveniently tokenise in-place with \0s */
 	errno = 0;
-	mm = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_FILE | MAP_PRIVATE, fd, 0);
+	mm = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
 	if(mm == MAP_FAILED) {
 		listerror("mmap");
 	}

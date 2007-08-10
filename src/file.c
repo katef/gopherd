@@ -36,7 +36,7 @@ void mapfile(const char *path, size_t len) {
 	}
 
 	errno = 0;
-	mm = mmap(NULL, len, PROT_READ, MAP_FILE | MAP_PRIVATE, fd, 0);
+	mm = mmap(NULL, len, PROT_READ, MAP_PRIVATE, fd, 0);
 	if(mm == MAP_FAILED) {
 		listerror("mmap");
 	}
