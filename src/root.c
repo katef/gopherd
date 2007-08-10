@@ -5,16 +5,17 @@
  * $Id$
  */
 
+/* for chroot(2) */
+#define _BSD_SOURCE
+#include <unistd.h>
+#undef _BSD_SOURCE
+
 #include <sys/param.h>
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <pwd.h>
 #include <stdio.h>
-
-/* for chroot(2) */
-#define _BSD_SOURCE
-#include <unistd.h>
 
 #include "gopherd.h"
 
