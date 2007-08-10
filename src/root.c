@@ -10,8 +10,11 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <pwd.h>
-#include <unistd.h>
 #include <stdio.h>
+
+/* for chroot(2) */
+#define _BSD_SOURCE
+#include <unistd.h>
 
 #include "gopherd.h"
 
