@@ -95,7 +95,9 @@ readandchroot(const char *user)
 	/*
 	 * Find and simplify the given selector into a selection path.
 	 */
-	fgets(selector, MAXPATHLEN, stdin);
+	if (fgets(selector, MAXPATHLEN, stdin) == NULL) {
+		listerror("fgets");
+	}
 	selector[strcspn(selector, "\r\n")] = '\0';
 	if (strlen(selector) == 0) {
 		strcpy(selector, "/");
