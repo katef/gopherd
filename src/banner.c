@@ -92,7 +92,7 @@ static void showurl(const enum filetype ft, const char *href, const char *server
  * Decode a URL. May output to the same string from which it reads.
  */
 static void urldecode(const char *in, char *out) {
-	char hexpair[] = { '\0' };
+	char hexpair[3] = { '\0' };
 
 	while(*in) {
 		switch(*in++) {
