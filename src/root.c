@@ -24,8 +24,10 @@ bool chrooted;
  * Strip off the prepended root path if neccessary. This is used to santize the
  * output when the server is unable to chroot and so has prepended the root.
  */
-const char *striproot(const char *path) {
-	if(root && !chrooted) {
+const char *
+striproot(const char *path)
+{
+	if (root != NULL && !chrooted) {
 		return path + strlen(root);
 	}
 
@@ -43,7 +45,9 @@ const char *striproot(const char *path) {
  * This way the client is returned links which look like their origional
  * selector.
  */
-char *readandchroot(const char *user) {
+char *
+readandchroot(const char *user)
+{
 	char selector[MAXPATHLEN];
 	char path[MAXPATHLEN];
 	struct passwd *pw;
@@ -52,10 +56,10 @@ char *readandchroot(const char *user) {
 	 * Find the user to switch to. This must be done before chroot, because
 	 * getpwnam() needs to read /etc/passwd.
 	 */
-	if(user) {
+	if (user != NULL) {
 		errno = 0;
 		pw = getpwnam(user);
-		if(!pw) {
+		if (!pw) {
 			listerror("unknown user");
 		}
 	}
@@ -66,8 +70,8 @@ char *readandchroot(const char *user) {
 	 * path to our selector further on, as a substitute.
 	 */
 	chrooted = false;
-	if(root && getuid() == 0) {
-		if(chroot(root) == -1) {
+	if (root != NULL && getuid() == 0) {
+		if (chroot(root) == -1) {
 			listerror("chroot");
 		}
 		chrooted = true;
@@ -76,12 +80,12 @@ char *readandchroot(const char *user) {
 	/*
 	 * Switch user.
 	 */
-	if(user && pw) {
-		if(setgid(pw->pw_gid) == -1) {
+	if (user != NULL && pw) {
+		if (setgid(pw->pw_gid) == -1) {
 			listerror("setgid");
 		}
 
-		if(setuid(pw->pw_uid) == -1) {
+		if (setuid(pw->pw_uid) == -1) {
 			listerror("setuid");
 		}
 
@@ -93,25 +97,25 @@ char *readandchroot(const char *user) {
 	 */
 	fgets(selector, MAXPATHLEN, stdin);
 	selector[strcspn(selector, "\r\n")] = '\0';
-	if(strlen(selector) == 0) {
+	if (strlen(selector) == 0) {
 		strcpy(selector, "/");
 	}
-	if(root && !chrooted) {
+	if (root != NULL && !chrooted) {
 		char s[MAXPATHLEN];
 
 		strncpy(s, selector, sizeof(s) - 1);
 		s[sizeof(s) - 1] = '\0';
 		snprintf(selector, MAXPATHLEN, "%s/%s", root, s);
 	}
-	if(!realpath(selector, path)) {
+	if (!realpath(selector, path)) {
 		listerror("realpath");
 	}
 
 	/*
 	 * Check that the selection path is inside the given root.
 	 */
-	if(root && !chrooted) {
-		if(strncmp(path, root, strlen(root))) {
+	if (root != NULL && !chrooted) {
+		if (strncmp(path, root, strlen(root))) {
 			errno = EACCES;
 			listerror("root");
 		}

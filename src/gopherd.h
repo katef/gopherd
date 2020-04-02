@@ -1,27 +1,29 @@
-#ifndef _GOPHERD_H
-#define _GOPHERD_H
+#ifndef GOPHERD_H
+#define GOPHERD_H
 
 #include <sys/types.h>
+
 #include <stdbool.h>
 
 #define VERSION "0.1"
 #define AUTHOR "Kate F"
 
 /*
- * Gopher menu types. These are the first character in menus.
+ * Gopher menu types.
+ * These are the first character in menus.
  */
 enum filetype {
-	ft_binary	= '9',
-	ft_gif  	= 'g',
-	ft_html 	= 'h',
-	ft_image	= 'I',
-	ft_audio	= 's',
-	ft_text 	= '0',
-	ft_dir		= '1',
-	ft_info		= 'i',
-	ft_error	= '3',
-	ft_binhex	= '4',
-	ft_telnet	= '8'
+	FT_BINARY	= '9',
+	FT_GIF  	= 'g',
+	FT_HTML 	= 'h',
+	FT_IMAGE	= 'I',
+	FT_AUDIO	= 's',
+	FT_TEXT 	= '0',
+	FT_DIR		= '1',
+	FT_INFO		= 'i',
+	FT_ERROR	= '3',
+	FT_BINHEX	= '4',
+	FT_TELNET	= '8'
 };
 
 extern char *root;
@@ -46,7 +48,9 @@ char *readandchroot(const char *user);
 
 /* output.c */
 /* TODO make enums const */
-void menuitem(enum filetype ft, const char *path, const char *server, const unsigned short port, const char *namefmt, ...);
+void menuitem(enum filetype ft, const char *path,
+	const char *server, const unsigned short port,
+	const char *namefmt, ...);
 void listerror(const char *msg);
 void listinfo(const char *fmt, ...);
 

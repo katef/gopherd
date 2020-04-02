@@ -19,8 +19,10 @@ static void listtexterrorf(const char *fmt, ...);
  * Errors within this function are not reported to the client to avoid an
  * infinite loop.
  */
-static bool checkchars(const char *s) {
-	assert(s);
+static bool
+checkchars(const char *s)
+{
+	assert(s != NULL);
 
 	/*
 	 * If the complement of this set spans to the end of the string
@@ -35,26 +37,32 @@ static bool checkchars(const char *s) {
  * Errors within this function are not reported to the client to
  * avoid an infinite loop.
  */
-static void vmenuitem(enum filetype ft, const char *path, const char *server, unsigned short port, const char *namefmt, va_list ap) {
+static void
+vmenuitem(enum filetype ft, const char *path,
+	const char *server, unsigned short port,
+	const char *namefmt, va_list ap)
+{
 	char s[1024];
 
-	assert(path);
-	assert(server);
-	assert(namefmt);
+	assert(path != NULL);
+	assert(server != NULL);
+	assert(namefmt != NULL);
 
-	if(vsnprintf(s, sizeof s, namefmt, ap) >= sizeof s) {
+	if (vsnprintf(s, sizeof s, namefmt, ap) >= sizeof s) {
 		exit(EXIT_FAILURE);
 	}
 
-	if(!checkchars(s)) {
+	if (!checkchars(s)) {
 		listtexterrorf("Illegal character in filename");
 		return;
 	}
-	if(!checkchars(path)) {
+
+	if (!checkchars(path)) {
 		listtexterrorf("Illegal character in path to file");
 		return;
 	}
-	if(!checkchars(server)) {
+
+	if (!checkchars(server)) {
 		listtexterrorf("Illegal character in hostname");
 		return;
 	}
@@ -66,11 +74,15 @@ static void vmenuitem(enum filetype ft, const char *path, const char *server, un
 /*
  * Output a single menu item. The strings passed in are unescaped.
  */
-void menuitem(enum filetype ft, const char *path, const char *server, const unsigned short port, const char *namefmt, ...) {
+void
+menuitem(enum filetype ft, const char *path,
+	const char *server, const unsigned short port,
+	const char *namefmt, ...)
+{
 	va_list ap;
 
-	assert(path);
-	assert(namefmt);
+	assert(path != NULL);
+	assert(namefmt != NULL);
 
 	va_start(ap, namefmt);
 	vmenuitem(ft, path, server, port, namefmt, ap);
@@ -80,19 +92,23 @@ void menuitem(enum filetype ft, const char *path, const char *server, const unsi
 /*
  * Create an error listing and exit.
  */
-static void listtexterrorf(const char *fmt, ...) {
+static void
+listtexterrorf(const char *fmt, ...)
+{
 	va_list ap;
 
 	va_start(ap, fmt);
-	vmenuitem(ft_error, "fake", "(NULL)", 0, fmt, ap);
+	vmenuitem(FT_ERROR, "fake", "(NULL)", 0, fmt, ap);
 	va_end(ap);
 }
 
 /*
  * Create an error listing and exit.
  */
-void listerror(const char *msg) {
-	menuitem(ft_error, "fake", "(NULL)", 0, "%s: %s", msg, strerror(errno));
+void
+listerror(const char *msg)
+{
+	menuitem(FT_ERROR, "fake", "(NULL)", 0, "%s: %s", msg, strerror(errno));
 	printf(".\r\n");
 	exit(EXIT_FAILURE);
 }
@@ -101,11 +117,13 @@ void listerror(const char *msg) {
  * Create a listing for informational text. printf-style formatting is
  * provided.
  */
-void listinfo(const char *fmt, ...) {
+void
+listinfo(const char *fmt, ...)
+{
 	va_list ap;
 
 	va_start(ap, fmt);
-	vmenuitem(ft_info, "fake", "(NULL)", 0, fmt, ap);
+	vmenuitem(FT_INFO, "fake", "(NULL)", 0, fmt, ap);
 	va_end(ap);
 }
 

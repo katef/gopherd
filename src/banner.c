@@ -8,6 +8,7 @@
 
 #include <sys/mman.h>
 #include <sys/stat.h>
+
 #include <stdlib.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -27,11 +28,14 @@ char *bannerfile;
  * Returns false on parse errors.
  * TODO Maybe a regex would make for more understandable code here.
  */
-static bool urlsplit(char *url, char **server, unsigned short *port, char **path, bool *defaultport, char **service) {
+static bool
+urlsplit(char *url, char **server, unsigned short *port,
+	char **path, bool *defaultport, char **service)
+{
 	char *p;
 
 	*server = strstr(url, "://");
-	if(!*server) {
+	if (!*server) {
 		return false;
 	}
 	**server = '\0';
@@ -43,7 +47,7 @@ static bool urlsplit(char *url, char **server, unsigned short *port, char **path
 	 * any colons in the path with the port, if a port is not given.
 	 */
 	*path = strchr(*server, '/');
-	if(!*path) {
+	if (*path == NULL) {
 		/* There is no path given. */
 		*path = "";
 	} else {
@@ -56,12 +60,12 @@ static bool urlsplit(char *url, char **server, unsigned short *port, char **path
 	 * will be used.
 	 */
 	p = strchr(*server, ':');
-	if(p) {
+	if (p != NULL) {
 		*p = '\0';
 		p++;
 
 		*port = strtol(p, NULL, 10);
-		if(*port) {
+		if (*port) {
 			*defaultport = false;
 			return true;
 		}
@@ -80,8 +84,12 @@ static bool urlsplit(char *url, char **server, unsigned short *port, char **path
 /*
  * Create a menu item, only showing the port if it is not the default for that service.
  */
-static void showurl(const enum filetype ft, const char *href, const char *server, const unsigned short port, const char *service, const char *linkpath, const bool defaultport) {
-	if(defaultport) {
+static void
+showurl(const enum filetype ft, const char *href,
+	const char *server, const unsigned short port, const char *service,
+	const char *linkpath, const bool defaultport)
+{
+	if (defaultport) {
 		menuitem(ft, href, server, port, "%s://%s/%s", service, server, linkpath);
 	} else {
 		menuitem(ft, href, server, port, "%s://%s:%d/%s", service, server, port, linkpath);
@@ -91,10 +99,12 @@ static void showurl(const enum filetype ft, const char *href, const char *server
 /*
  * Decode a URL. May output to the same string from which it reads.
  */
-static void urldecode(const char *in, char *out) {
+static void
+urldecode(const char *in, char *out)
+{
 	char hexpair[3] = { '\0' };
 
-	while(*in) {
+	while (*in != '\0') {
 		switch(*in++) {
 		case '%':
 			strncpy(hexpair, in, 2);
@@ -113,16 +123,19 @@ static void urldecode(const char *in, char *out) {
 
 		out++;
 	}
+
 	*out = '\0';
 }
 
 /*
  * Will write over the memory it is passed.
  */
-static void showbanner(char *banner) {
+static void
+showbanner(char *banner)
+{
 	char *p;
 
-	for( ; banner && *banner; banner = p) {
+	for ( ; banner != NULL && *banner != '\0'; banner = p) {
 		char *server;
 		unsigned short port;
 		char *path;
@@ -130,11 +143,11 @@ static void showbanner(char *banner) {
 		bool defaultport;
 
 		p = strchr(banner, '\n');
-		if(p) {
+		if (p != NULL) {
 			*p++ = '\0';
 		}
 
-		if(!strstr(banner, "://")) {
+		if (!strstr(banner, "://")) {
 			listinfo(banner);
 			continue;
 		}
@@ -143,30 +156,30 @@ static void showbanner(char *banner) {
 		 * Here we have a url. Attempt to parse it.
 		 */
 		urldecode(banner, banner);
-		if(!urlsplit(banner, &server, &port, &path, &defaultport, &service)) {
+		if (!urlsplit(banner, &server, &port, &path, &defaultport, &service)) {
 			listinfo(banner);
 			continue;
 		}
 
-		if(!strncmp(service, "http", strlen("http"))) {
+		if (!strncmp(service, "http", strlen("http"))) {
 			char *s;
 			size_t slen;
 
 			slen = strlen(path) + strlen("GET /");
 			s = malloc(slen + 1);
-			if(!s) {
+			if (s == NULL) {
 				listerror("malloc");
 			}
 
 			snprintf(s, slen + 1, "GET %s%s", path[0] == '/' ? "" : "/", path);
-			showurl(ft_html, s, server, port, service, path, defaultport);
+			showurl(FT_HTML, s, server, port, service, path, defaultport);
 			free(s);
 			continue;
-		} else if(!strncmp(service, "gopher", strlen("gopher"))) {
-			showurl(ft_dir, path, server, port, service, path, defaultport);
+		} else if (!strncmp(service, "gopher", strlen("gopher"))) {
+			showurl(FT_DIR, path, server, port, service, path, defaultport);
 			continue;
-		} else if(!strncmp(service, "telnet", strlen("telnet"))) {
-			showurl(ft_telnet, path, server, port, service, path, defaultport);
+		} else if (!strncmp(service, "telnet", strlen("telnet"))) {
+			showurl(FT_TELNET, path, server, port, service, path, defaultport);
 			continue;
 		}
 
@@ -179,8 +192,11 @@ static void showbanner(char *banner) {
 	listinfo("");
 }
 
-/* TODO show banner here, if specified. ^http:// and ^gopher:// etc (including telnet) can be made links. */
-void listbanner(const char *path) {
+/* TODO show banner here, if specified.
+ * ^http:// and ^gopher:// etc (including telnet) can be made links. */
+void
+listbanner(const char *path)
+{
 	char *s;
 	size_t slen;
 	int fd;
@@ -189,7 +205,7 @@ void listbanner(const char *path) {
 
 	slen = strlen(bannerfile) + strlen(path) + strlen("/");
 	s = malloc(slen + 1);
-	if(!s) {
+	if (s == NULL) {
 		listerror("malloc");
 	}
 	snprintf(s, slen + 1, "%s/%s", path, bannerfile);
@@ -197,8 +213,8 @@ void listbanner(const char *path) {
 	errno = 0;
 	fd = open(s, O_RDONLY);
 	free(s);
-	if(fd == -1) {
-		if(errno == ENOENT) {
+	if (fd == -1) {
+		if (errno == ENOENT) {
 			/* A banner simply does not exist for this directory; this is fine. */
 			return;
 		}
@@ -207,14 +223,14 @@ void listbanner(const char *path) {
 		listerror("open");
 	}
 
-	if(fstat(fd, &sb) == -1) {
+	if (fstat(fd, &sb) == -1) {
 		listerror("fstat");
 	}
 
 	/* We're mapping read/write so we can conveniently tokenise in-place with \0s */
 	errno = 0;
 	mm = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-	if(mm == MAP_FAILED) {
+	if (mm == MAP_FAILED) {
 		listerror("mmap");
 	}
 

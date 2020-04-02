@@ -3,14 +3,16 @@
  */
 
 #include <sys/stat.h>
-#include <string.h>
-#include <assert.h>
-#include <stdlib.h>
+
 #include <dirent.h>
-#include <stdio.h>
-#include <math.h>
-#include <errno.h>
+
+#include <assert.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <errno.h>
+#include <math.h>
 
 #include "gopherd.h"
 
@@ -21,22 +23,24 @@ bool hidesize;
  * Return a string of human-readable digits in the form "2.34KB".
  * Caller frees.
  */
-static char *humanreadable(double size) {
+static char *
+humanreadable(double size)
+{
 #define DIGITS 255
 	char buffer[DIGITS];
 
-	if(size < 1) {
+	if (size < 1) {
 		snprintf(buffer, DIGITS, "0");
-	} else if(size < 1000) {
+	} else if (size < 1000) {
 		snprintf(buffer, DIGITS, "%dB", (int)size);
-	} else if(size < 1000000) {
+	} else if (size < 1000000) {
 		snprintf(buffer, DIGITS, "%.2fkB", size / 1024);
 	} else {
 		const char unit[] = "MGTP";
 		int i;
 
-		for(i = 3; ; i++) {
-			if(size >= pow(1000, i) && unit[i - 2]) {
+		for (i = 3; ; i++) {
+			if (size >= pow(1000, i) && unit[i - 2]) {
 				continue;
 			}
 
@@ -52,51 +56,59 @@ static char *humanreadable(double size) {
 /*
  * Concaternate a filename onto a path. Caller frees.
  */
-static char *allocpath(const char *filename, const char *path) {
+static char *
+allocpath(const char *filename, const char *path)
+{
 	char *s;
 	size_t slen;
 
-	assert(filename);
-	assert(path);
+	assert(filename != NULL);
+	assert(path != NULL);
 
 	slen = strlen(filename) + strlen(path) + strlen("/");
 	errno = 0;
+
 	s = malloc(slen + 1);
-	if(!s) {
+	if (s == NULL) {
 		listerror("malloc");
 	}
 
 	snprintf(s, slen + 1, !strcmp(path, "/") ? "%s%s" : "%s/%s", path, filename);
+
 	return s;
 }
 
 /*
  * Create a listing for a single file item.
  */
-static void listfile(const char *filename, const char *ext, const char *parent, const char *server, const unsigned short port) {
+static void
+listfile(const char *filename, const char *ext, const char *parent,
+	const char *server, const unsigned short port)
+{
 	enum filetype ft;
-	char *s;
-	char *size;
 	struct stat sb;
+	char *size;
+	char *s;
 
-	assert(filename);
-	assert(parent);
+	assert(filename != NULL);
+	assert(parent != NULL);
 
 	ft = findtype(ext, filename);
 
 	/* TODO append directory listing details: date etc */
 	s = allocpath(filename, parent);
 
-	if(stat(s, &sb) == -1) {
+	if (stat(s, &sb) == -1) {
 		listerror("stat");
 	}
 
-	if(hidesize) {
+	if (hidesize) {
 		menuitem(ft, striproot(s), server, port, "%s", filename);
 	} else {
 		size = humanreadable(sb.st_size);
 		menuitem(ft, striproot(s), server, port, "%s - %s", filename, size);
 	}
+
 	free(size);
 	free(s);
 }
@@ -105,16 +117,19 @@ static void listfile(const char *filename, const char *ext, const char *parent, 
  * Create a listing for a single directory item. Note that trailing
  * slashes are not appended, as the display is the client's choice.
  */
-static void listdir(const char *dirname, const char *parent, const char *server, const unsigned short port) {
+static void
+listdir(const char *dirname, const char *parent,
+	const char *server, const unsigned short port)
+{
 	char *s;
 
-	assert(dirname);
-	assert(parent);
+	assert(dirname != NULL);
+	assert(parent != NULL);
 
 	s = allocpath(dirname, parent);
 
 	/* TODO append directory details here (number of entries) */
-	menuitem(ft_dir, striproot(s), server, port, "%s", dirname);
+	menuitem(FT_DIR, striproot(s), server, port, "%s", dirname);
 
 	free(s);
 }
@@ -122,53 +137,54 @@ static void listdir(const char *dirname, const char *parent, const char *server,
 /*
  * Create a menu listing all the contents of the given directory.
  */
-void dirmenu(const char *path, const char *server, const unsigned short port) {
-	DIR *od;
+void
+dirmenu(const char *path, const char *server, const unsigned short port)
+{
 	struct dirent de;
 	struct dirent *dep;
 	unsigned int i;
+	DIR *od;
    
-	assert(path);
+	assert(path != NULL);
 
 	errno = 0;
 	od = opendir(path);
-	if(!od) {
+	if (od == NULL) {
 		listerror("opendir");
 	}
 
 	/*
 	 * Show the banner file, if specified.
 	 */
-	if(bannerfile) {
+	if (bannerfile != NULL) {
 		listbanner(path);
 	}
 
 	i = 0;
-	for(;;) {
+	for (;;) {
 		char *s;
 		struct stat sb;
 
 		errno = 0;
-		if(readdir_r(od, &de, &dep)) {
+		if (readdir_r(od, &de, &dep)) {
 			listerror("readdir_r");
 		}
 
-		if(!dep) {
+		if (!dep) {
 			break;
 		}
 
 		/*
 		 * Skip parent and current directories.
 		 */
-		if(!strcmp(de.d_name, ".")
-		|| !strcmp(de.d_name, "..")) {
+		if (!strcmp(de.d_name, ".") || !strcmp(de.d_name, "..")) {
 			continue;
 		}
 
 		/*
 		 * Skip hidden files, if appropiate.
 		 */
-		if(!showhidden && de.d_name[0] == '.') {
+		if (!showhidden && de.d_name[0] == '.') {
 			continue;
 		}
 
@@ -176,13 +192,13 @@ void dirmenu(const char *path, const char *server, const unsigned short port) {
 		 * Skip the banner file here, if specified, since it needn't be
 		 * included in listings.
 		 */
-		if(bannerfile && !strcmp(de.d_name, bannerfile)) {
+		if (bannerfile && !strcmp(de.d_name, bannerfile)) {
 			continue;
 		}
 
 		s = allocpath(de.d_name, path);
 
-		if(stat(s, &sb) == -1) {
+		if (stat(s, &sb) == -1) {
 			listerror("stat");
 		}
 		free(s);
@@ -213,7 +229,7 @@ void dirmenu(const char *path, const char *server, const unsigned short port) {
 	/*
 	 * If there are no items, this may be a banner-only directory.
 	 */
-	if(bannerfile && i) {
+	if (bannerfile && i) {
 		listinfo("");
 		listinfo("%d item%s total", i, i == 1 ? "" : "s");
 	}
