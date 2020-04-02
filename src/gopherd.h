@@ -1,7 +1,3 @@
-/*
- * $Id$
- */
-
 #ifndef _GOPHERD_H
 #define _GOPHERD_H
 

@@ -4,8 +4,6 @@
  * the menu listing.
  *
  * Within the file, URLs (on their own lines) are output as links.
- *
- * $Id$
  */
 
 #include <sys/mman.h>

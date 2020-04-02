@@ -1,8 +1,6 @@
 /*
  * Root constraints. This is either chrooted, or a transparently-
  * prepended path.
- *
- * $Id$
  */
 
 /* for chroot(2) */

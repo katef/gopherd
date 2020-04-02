@@ -1,7 +1,5 @@
 /*
  * Menu output.
- *
- * $Id$
  */
 
 #include <string.h>

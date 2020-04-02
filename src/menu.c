@@ -1,7 +1,5 @@
 /*
  * Menu listing.
- *
- * $Id$
  */
 
 #include <sys/stat.h>

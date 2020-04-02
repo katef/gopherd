@@ -5,8 +5,6 @@
  *  gopher stream tcp nowait nobody /path/to/gopherd gopherd
  *
  * For the moment, the server and port are hardcoded here.
- *
- * $Id$
  */
 
 #include <arpa/inet.h>

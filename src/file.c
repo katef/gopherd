@@ -1,7 +1,5 @@
 /*
  * Single file handling.
- *
- * $Id$
  */
 
 #include <sys/types.h>

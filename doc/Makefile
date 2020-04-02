@@ -1,4 +1,3 @@
-# $Id$
 # Because I always forget: groff -man -Tascii gopherd.8
 
 XSLTPROC=xsltproc
