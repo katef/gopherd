@@ -26,15 +26,14 @@ bool hidesize;
 static char *
 humanreadable(double size)
 {
-#define DIGITS 255
-	char buffer[DIGITS];
+	char buf[255];
 
 	if (size < 1) {
-		snprintf(buffer, DIGITS, "0");
+		snprintf(buf, sizeof buf, "0");
 	} else if (size < 1000) {
-		snprintf(buffer, DIGITS, "%dB", (int)size);
+		snprintf(buf, sizeof buf, "%dB", (int)size);
 	} else if (size < 1000000) {
-		snprintf(buffer, DIGITS, "%.2fkB", size / 1024);
+		snprintf(buf, sizeof buf, "%.2fkB", size / 1024);
 	} else {
 		const char unit[] = "MGTP";
 		int i;
@@ -44,13 +43,12 @@ humanreadable(double size)
 				continue;
 			}
 
-			snprintf(buffer, DIGITS, "%.02f%cB", size / pow(1024, i - 1), unit[i - 3]);
+			snprintf(buf, sizeof buf, "%.02f%cB", size / pow(1024, i - 1), unit[i - 3]);
 			break;
 		}
 	}
 
-	return strdup(buffer);
-#undef DIGITS
+	return strdup(buf);
 }
 
 /*
