@@ -1,7 +1,12 @@
 # gopherd
 
-This is a Gopher server, run under inetd. See the manpage provided in doc/
-for details.
+This is a Gopher server, run under inetd.
+
+The server is intended to be run as an inetd(8) service.
+It will serve one request and then exit.
+A suitable inetd.conf(5) configuration line looks like so:
+
+    gopher stream tcp nowait nobody /path/to/gopherd gopherd [-options]
 
 ## Installing
 
