@@ -1,25 +1,25 @@
-# $Id$
+.include "../../share/mk/top.mk"
 
-CFLAGS=-Wall -Werror -pedantic -ansi -D_XOPEN_SOURCE=600
-LDFLAGS=-lmagic -lz -lm
+SRC += src/banner.c
+SRC += src/file.c
+SRC += src/main.c
+SRC += src/menu.c
+SRC += src/output.c
+SRC += src/root.c
 
-REMOVE=rm -f
-INSTALL=install
+.for src in ${SRC:M*.c}
+#CFLAGS.${src} += -I src
+.endfor
 
-TARGETS=file.o main.o menu.o output.o root.o banner.o
+CFLAGS += -D_XOPEN_SOURCE=600
 
-PREFIX?=/usr/localxx
-LIBEXEC?=${PREFIX}/libexec
+PROG += gopherd
 
-all: gopherd
+# XXX: would prefer to use pkgconf for libmagic,
+# but it isn't packaged with a .pc file (at least for Debian).
+LFLAGS.gopherd += -lmagic -lz -lm
 
-install: all
-	${INSTALL} -m 755 -d ${LIBEXEC}
-	${INSTALL} -m 755 gopherd ${LIBEXEC}/
-
-clean:
-	${REMOVE} $(TARGETS) gopherd
-
-gopherd: $(TARGETS)
-	${CC} ${CFLAGS} ${LDFLAGS} -o $@ $(TARGETS)
+.for src in ${SRC:Msrc/*.c}
+${BUILD}/bin/gopherd: ${BUILD}/${src:R}.o
+.endfor
 

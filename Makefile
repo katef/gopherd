@@ -1,14 +1,28 @@
-# $Id$
+.MAKEFLAGS: -r -m share/mk
 
-all:
-	cd doc && ${MAKE} all
-	cd src && ${MAKE} all
+# targets
+all::  mkdir .WAIT dep prog
+dep::
+gen::
+test:: all
+install:: all
+uninstall::
+clean::
 
-clean:
-	cd doc && ${MAKE} clean
-	cd src && ${MAKE} clean
+# things to override
+CC     ?= gcc
+BUILD  ?= build
+PREFIX ?= /usr/local
 
-install:
-	cd doc && ${MAKE} install
-	cd src && ${MAKE} install
+# layout
+SUBDIR += src
+
+.include <subdir.mk>
+.include <obj.mk>
+.include <dep.mk>
+.include <ar.mk>
+.include <prog.mk>
+.include <mkdir.mk>
+.include <install.mk>
+.include <clean.mk>
 
