@@ -52,7 +52,8 @@ humanreadable(double size)
 }
 
 /*
- * Concaternate a filename onto a path. Caller frees.
+ * Concaternate a filename onto a path.
+ * Caller frees.
  */
 static char *
 allocpath(const char *filename, const char *path)
@@ -151,9 +152,6 @@ dirmenu(const char *path, const char *server, const unsigned short port)
 		listerror("opendir");
 	}
 
-	/*
-	 * Show the banner file, if specified.
-	 */
 	if (bannerfile != NULL) {
 		listbanner(path);
 	}

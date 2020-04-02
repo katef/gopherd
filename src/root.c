@@ -1,6 +1,6 @@
 /*
- * Root constraints. This is either chrooted, or a transparently-
- * prepended path.
+ * Root constraints.
+ * This is either chrooted, or a transparently-prepended path.
  */
 
 /* for chroot(2) */

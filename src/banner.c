@@ -25,8 +25,9 @@ char *bannerfile;
  * it defaults as given by the protocol name. The url given is written over.
  * The output path may be NULL if none is given.
  *
+ * Specifiying no port is permitted; the default will be used.
+ *
  * Returns false on parse errors.
- * TODO Maybe a regex would make for more understandable code here.
  */
 static bool
 urlsplit(char *url, char **server, unsigned short *port,
@@ -56,8 +57,7 @@ urlsplit(char *url, char **server, unsigned short *port,
 	}
 
 	/*
-	 * Find the port, if given. Specifiying no port is permitted; the default
-	 * will be used.
+	 * Find the port, if given.
 	 */
 	p = strchr(*server, ':');
 	if (p != NULL) {
@@ -97,18 +97,19 @@ showurl(const enum filetype ft, const char *href,
 }
 
 /*
- * Decode a URL. May output to the same string from which it reads.
+ * Decode a URL.
+ * May output to the same string from which it reads.
  */
 static void
 urldecode(const char *in, char *out)
 {
-	char hexpair[3] = { '\0' };
+	char hex[3] = { '\0' };
 
 	while (*in != '\0') {
 		switch(*in++) {
 		case '%':
-			strncpy(hexpair, in, 2);
-			*out = strtol(hexpair, NULL, 16);
+			strncpy(hex, in, 2);
+			*out = strtol(hex, NULL, 16);
 			in += 2;
 			break;
 
@@ -215,7 +216,7 @@ listbanner(const char *path)
 	free(s);
 	if (fd == -1) {
 		if (errno == ENOENT) {
-			/* A banner simply does not exist for this directory; this is fine. */
+			/* A banner does not exist for this directory; this is fine. */
 			return;
 		}
 

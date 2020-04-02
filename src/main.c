@@ -18,15 +18,9 @@
 
 #include "gopherd.h"
 
-/*
- * Default server address and port. The port is set below.
- */
 static char *server = "localhost";
 static unsigned short port = 70;
 
-/*
- * Lookup the default port of a given service.
- */
 unsigned short
 getservport(const char *service)
 {
@@ -52,9 +46,6 @@ main(int argc, char *argv[])
 	char *user = NULL;
 	char *path;
 
-	/*
-	 * Set the default port for responses. This may be overridden below.
-	 */
 	port = getservport("gopher");
 
 	/* TODO some option to specify a banner file for "welcome to such-and-such server" */
@@ -94,9 +85,6 @@ main(int argc, char *argv[])
 		argv += optind;
 	}
 
-	/*
-	 * Initialise and read input selector.
-	 */
 	path = readandchroot(user);
 	if (path == NULL) {
 		listerror("initialise");
