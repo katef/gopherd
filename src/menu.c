@@ -107,9 +107,9 @@ listfile(const char *filename, const char *ext, const char *parent,
 	} else {
 		size = humanreadable(sb.st_size);
 		menuitem(ft, striproot(s), server, port, "%s - %s", filename, size);
+		free(size);
 	}
 
-	free(size);
 	free(s);
 }
 
